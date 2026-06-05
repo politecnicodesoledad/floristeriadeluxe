@@ -1,11 +1,13 @@
 import { Link } from "react-router-dom";
 import { Helmet } from "react-helmet-async";
 import { motion } from "framer-motion";
-import { ArrowRight, Award, Flower, Gift, MessageCircle, Truck } from "lucide-react";
+import { ArrowRight, Award, Flower, Gift, MapPin, MessageCircle, Truck } from "lucide-react";
 import { Reveal } from "@/components/Reveal";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
 import { useBanner, useProducts } from "@/lib/hooks";
+import heroFrame from "@/assets/hero-floral-frame.png";
+import heroBouquet from "@/assets/hero-bouquet.png";
 
 const categories = [
   { name: "Cumpleaños", slug: "Cumpleaños", img: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=600&q=80" },
@@ -71,23 +73,39 @@ export default function Home() {
           </Reveal>
 
           <Reveal direction="right" delay={0.15}>
-            <div className="relative">
-              <div className="absolute -top-6 -right-6 w-72 h-72 md:w-96 md:h-96 bg-rose-mid/50 rounded-[40%] blur-2xl" />
+            <div className="relative aspect-square max-w-md mx-auto md:max-w-none">
+              {/* glow */}
+              <div className="absolute inset-6 bg-gradient-to-br from-rose-mid/40 to-cream rounded-full blur-2xl" />
+              {/* bouquet PNG centrado */}
               <motion.img
-                initial={{ scale: 0.9, opacity: 0 }}
+                src={heroBouquet}
+                alt="Ramo de rosas premium"
+                width={768}
+                height={1024}
+                initial={{ scale: 0.85, opacity: 0 }}
                 animate={{ scale: 1, opacity: 1 }}
                 transition={{ duration: 1, ease: "easeOut" }}
-                src="https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=900&q=85"
-                alt="Bouquet de rosas"
-                className="relative rounded-[2rem] shadow-luxe w-full aspect-[4/5] object-cover"
+                className="absolute inset-0 m-auto w-[58%] h-[58%] object-contain drop-shadow-2xl z-10"
+              />
+              {/* marco floral PNG rotando suave */}
+              <motion.img
+                src={heroFrame}
+                alt=""
+                aria-hidden
+                width={1024}
+                height={1024}
+                initial={{ opacity: 0, rotate: -8 }}
+                animate={{ opacity: 1, rotate: 0 }}
+                transition={{ duration: 1.4, ease: "easeOut" }}
+                className="relative w-full h-full object-contain"
               />
               <motion.div
                 animate={{ y: [0, -10, 0] }}
                 transition={{ repeat: Infinity, duration: 4, ease: "easeInOut" }}
-                className="absolute -bottom-5 -left-5 bg-cream rounded-2xl shadow-soft p-4 hidden sm:block"
+                className="absolute -bottom-2 -left-2 sm:-bottom-3 sm:-left-3 bg-cream rounded-2xl shadow-soft p-3 sm:p-4 z-20"
               >
-                <p className="text-xs text-rose-deep uppercase tracking-widest">Envío hoy</p>
-                <p className="font-serif text-burgundy text-xl">Barranquilla</p>
+                <p className="text-[10px] sm:text-xs text-rose-deep uppercase tracking-widest">Envío hoy</p>
+                <p className="font-serif text-burgundy text-base sm:text-xl">Barranquilla</p>
               </motion.div>
             </div>
           </Reveal>
@@ -264,6 +282,33 @@ export default function Home() {
             </div>
           </Reveal>
         </div>
+      </section>
+
+      {/* MAPA */}
+      <section className="container mx-auto px-4 py-10 md:py-16">
+        <Reveal>
+          <div className="text-center mb-6">
+            <p className="font-script text-2xl text-rose-deep">Visítanos</p>
+            <h2 className="font-serif text-3xl md:text-4xl text-burgundy italic">Estamos aquí</h2>
+            <p className="text-muted-foreground mt-2 text-sm flex items-center justify-center gap-1.5">
+              <MapPin className="w-4 h-4 text-gold" /> Carrera 43 #79-226 local 1, Barranquilla
+            </p>
+          </div>
+        </Reveal>
+        <Reveal direction="up">
+          <div className="rounded-3xl overflow-hidden shadow-luxe border border-border/60 aspect-[16/9] md:aspect-[21/9]">
+            <iframe
+              title="Ubicación Floristería Deluxe"
+              src="https://www.google.com/maps?q=Carrera+43+%2379-226+Barranquilla&output=embed"
+              width="100%" height="100%" loading="lazy"
+              referrerPolicy="no-referrer-when-downgrade"
+              className="border-0 w-full h-full"
+            />
+          </div>
+          <a href="https://maps.app.goo.gl/GiRezgRaaX9UKr1C8" target="_blank" rel="noopener" className="block text-center text-sm text-burgundy underline underline-offset-4 mt-4 hover:text-rose-deep">
+            Abrir en Google Maps →
+          </a>
+        </Reveal>
       </section>
     </>
   );

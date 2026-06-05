@@ -13,7 +13,7 @@ export function ProductCard({ product }: { product: Product }) {
   };
 
   return (
-    <motion.div whileHover={{ y: -6 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}>
+    <motion.div whileHover={{ y: -4 }} transition={{ type: "spring", stiffness: 300, damping: 22 }}>
       <Link
         to={`/producto/${product.id}`}
         className="group block bg-card rounded-2xl overflow-hidden border border-border/60 hover:shadow-soft transition-shadow"
@@ -26,35 +26,35 @@ export function ProductCard({ product }: { product: Product }) {
             className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
           />
           {product.originalPrice && (
-            <span className="absolute top-2 left-2 bg-burgundy text-primary-foreground text-[10px] font-semibold px-2 py-0.5 rounded-full">
+            <span className="absolute top-1.5 left-1.5 bg-burgundy text-primary-foreground text-[9px] md:text-[10px] font-semibold px-1.5 md:px-2 py-0.5 rounded-full">
               OFERTA
             </span>
           )}
         </div>
-        <div className="p-3 md:p-4">
-          <p className="text-[10px] md:text-xs uppercase tracking-wider text-rose-deep font-medium mb-1">
+        <div className="p-2 md:p-4">
+          <p className="text-[9px] md:text-xs uppercase tracking-wider text-rose-deep font-medium mb-0.5 md:mb-1">
             {product.category}
           </p>
-          <h3 className="font-serif text-burgundy text-sm md:text-base leading-snug line-clamp-2 min-h-[2.5rem]">
+          <h3 className="font-serif text-burgundy text-xs md:text-base leading-snug line-clamp-2 min-h-[2rem] md:min-h-[2.5rem]">
             {product.title}
           </h3>
-          <div className="mt-2 flex items-end justify-between gap-2">
+          <div className="mt-1.5 md:mt-2 flex items-end justify-between gap-1.5">
             <div className="min-w-0">
               {product.originalPrice && (
-                <p className="text-[11px] text-muted-foreground line-through">
+                <p className="text-[10px] md:text-[11px] text-muted-foreground line-through leading-none">
                   {formatCOP(product.originalPrice)}
                 </p>
               )}
-              <p className="text-sm md:text-base font-semibold text-burgundy">
+              <p className="text-xs md:text-base font-semibold text-burgundy leading-tight">
                 {formatCOP(product.price)}
               </p>
             </div>
             <button
               onClick={onAdd}
               aria-label="Añadir al carrito"
-              className="shrink-0 w-9 h-9 rounded-full bg-burgundy text-primary-foreground flex items-center justify-center hover:bg-burgundy-light transition-colors"
+              className="shrink-0 w-7 h-7 md:w-9 md:h-9 rounded-full bg-burgundy text-primary-foreground flex items-center justify-center hover:bg-burgundy-light transition-colors"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" />
             </button>
           </div>
         </div>

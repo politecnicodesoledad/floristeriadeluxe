@@ -43,25 +43,31 @@ export default function Tienda() {
           </p>
         </div>
       </section>
-      <section className="container mx-auto px-4 py-10">
-        <Reveal>
-          <div className="flex flex-wrap gap-2 justify-center mb-8">
+      {/* Filtros sticky con scroll horizontal en móvil */}
+      <div className="sticky top-20 z-30 bg-background/95 backdrop-blur border-b border-border/60">
+        <div className="container mx-auto px-2 md:px-4 py-2.5">
+          <div className="flex gap-2 overflow-x-auto no-scrollbar md:justify-center pb-1">
             {CATEGORIES.map((c) => (
-              <Button
+              <button
                 key={c}
                 onClick={() => change(c)}
-                variant={cat === c ? "default" : "outline"}
-                className={cat === c ? "bg-burgundy hover:bg-burgundy-light text-primary-foreground rounded-full" : "border-burgundy/40 text-burgundy hover:bg-rose-soft rounded-full"}
+                className={`shrink-0 px-4 h-9 rounded-full text-sm font-serif italic transition-all ${
+                  cat === c
+                    ? "bg-burgundy text-primary-foreground shadow-soft"
+                    : "bg-rose-soft/60 text-burgundy hover:bg-rose-mid/50"
+                }`}
               >
                 {c}
-              </Button>
+              </button>
             ))}
           </div>
-        </Reveal>
+        </div>
+      </div>
+      <section className="container mx-auto px-3 md:px-4 py-6 md:py-10">
         {filtered.length === 0 ? (
           <p className="text-center text-muted-foreground py-20">No hay productos en esta categoría aún.</p>
         ) : (
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2.5 md:gap-5">
             {filtered.map((p, i) => (
               <Reveal key={p.id} direction="up" delay={i * 0.04}>
                 <ProductCard product={p} />
