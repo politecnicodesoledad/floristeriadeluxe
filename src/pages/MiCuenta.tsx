@@ -16,10 +16,10 @@ export default function MiCuenta() {
 
   const toggle = (v: boolean) => store.setUser({ loggedIn: v, name: v ? "Cliente Deluxe" : "Invitado" });
 
-  const search = () => {
-    const o = store.findOrder(code.trim());
+  const search = async () => {
+    const o = await store.findOrderRemote(code.trim());
     setFound(o || null);
-    if (o) setOrders(store.getOrders());
+    setOrders(store.getOrders());
   };
 
   return (

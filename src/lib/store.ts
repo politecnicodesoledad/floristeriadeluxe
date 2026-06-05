@@ -1,5 +1,9 @@
-// Local store backed by localStorage. Structured so it can be swapped for Supabase later.
-// All reads are SSR-safe (no-ops if window is undefined).
+// Hybrid store: localStorage cache + Supabase as source of truth.
+// - Reads stay synchronous (cache) so components don't need refactor.
+// - On mount the app calls `hydrateAll()` to pull fresh data and emit events.
+// - Mutations write to cache (optimistic) and push to Supabase in background.
+
+import { supabase, SUPABASE_READY } from "./supabase";
 
 export type Product = {
   id: string;
@@ -69,6 +73,26 @@ function write<T>(key: string, value: T) {
   if (!isBrowser()) return;
   localStorage.setItem(key, JSON.stringify(value));
   window.dispatchEvent(new CustomEvent("fdx:store", { detail: { key } }));
+}
+
+// --- Supabase row mappers ---
+type ProductRow = {
+  id: string; title: string; description: string | null; price: number;
+  original_price: number | null; image: string; category: string; featured: boolean | null;
+};
+const fromProductRow = (r: ProductRow): Product => ({
+  id: r.id, title: r.title, description: r.description ?? "",
+  price: r.price, originalPrice: r.original_price ?? undefined,
+  image: r.image, category: r.category, featured: !!r.featured,
+});
+const toProductRow = (p: Product) => ({
+  id: p.id, title: p.title, description: p.description, price: p.price,
+  original_price: p.originalPrice ?? null, image: p.image,
+  category: p.category, featured: !!p.featured,
+});
+
+function logErr(ctx: string, err: unknown) {
+  if (err) console.warn(`[fdx:supabase:${ctx}]`, err);
 }
 
 // --- Seed data ---
@@ -183,9 +207,15 @@ export const store = {
     if (idx >= 0) list[idx] = p;
     else list.unshift(p);
     write(KEYS.products, list);
+    if (SUPABASE_READY) {
+      supabase.from("products").upsert(toProductRow(p)).then(({ error }) => logErr("upsertProduct", error));
+    }
   },
   deleteProduct(id: string) {
     write(KEYS.products, store.getProducts().filter((p) => p.id !== id));
+    if (SUPABASE_READY) {
+      supabase.from("products").delete().eq("id", id).then(({ error }) => logErr("deleteProduct", error));
+    }
   },
 
   // Cart
@@ -221,15 +251,40 @@ export const store = {
   },
   addOrder(o: Order) {
     write(KEYS.orders, [o, ...store.getOrders()]);
+    if (SUPABASE_READY) {
+      supabase.from("orders").insert({
+        code: o.code, items: o.items, total: o.total,
+        dedicatoria: o.dedicatoria ?? null, customer: o.customer ?? null,
+        status: o.status, created_at: new Date(o.createdAt).toISOString(),
+      }).then(({ error }) => logErr("addOrder", error));
+    }
   },
   updateOrderStatus(code: string, status: Order["status"]) {
     write(
       KEYS.orders,
       store.getOrders().map((o) => (o.code === code ? { ...o, status } : o)),
     );
+    if (SUPABASE_READY) {
+      supabase.from("orders").update({ status }).eq("code", code).then(({ error }) => logErr("updateOrderStatus", error));
+    }
   },
   findOrder(code: string) {
     return store.getOrders().find((o) => o.code.toLowerCase() === code.toLowerCase());
+  },
+  async findOrderRemote(code: string): Promise<Order | null> {
+    if (!SUPABASE_READY) return store.findOrder(code) ?? null;
+    const { data, error } = await supabase
+      .from("orders").select("*").ilike("code", code.trim()).maybeSingle();
+    if (error || !data) return store.findOrder(code) ?? null;
+    const o: Order = {
+      code: data.code, items: data.items, total: data.total,
+      dedicatoria: data.dedicatoria ?? undefined, customer: data.customer ?? undefined,
+      status: data.status, createdAt: new Date(data.created_at).getTime(),
+    };
+    // refresh cache so historial muestra el pedido
+    const cached = store.getOrders().filter((x) => x.code !== o.code);
+    write(KEYS.orders, [o, ...cached]);
+    return o;
   },
 
   // Banner / Popup
@@ -238,6 +293,10 @@ export const store = {
   },
   saveBanner(b: Banner) {
     write(KEYS.banner, b);
+    if (SUPABASE_READY) {
+      supabase.from("site_settings").upsert({ key: "banner", value: b, updated_at: new Date().toISOString() })
+        .then(({ error }) => logErr("saveBanner", error));
+    }
   },
   getPopup(): Popup {
     return read<Popup>(KEYS.popup, DEFAULT_POPUP);
@@ -246,6 +305,10 @@ export const store = {
     write(KEYS.popup, p);
     // reset seen so admin changes show again
     if (isBrowser()) localStorage.removeItem(KEYS.popupSeen);
+    if (SUPABASE_READY) {
+      supabase.from("site_settings").upsert({ key: "popup", value: p, updated_at: new Date().toISOString() })
+        .then(({ error }) => logErr("savePopup", error));
+    }
   },
   popupSeen(id: string) {
     return isBrowser() && localStorage.getItem(KEYS.popupSeen) === id;
@@ -270,6 +333,58 @@ export const store = {
     write(KEYS.admin, v);
   },
 };
+
+// ============================================================
+// Hidratación desde Supabase (se llama desde App.tsx al montar)
+// ============================================================
+export async function hydrateAll() {
+  if (!SUPABASE_READY || !isBrowser()) return;
+  await Promise.all([hydrateProducts(), hydrateOrders(), hydrateSettings()]);
+}
+
+async function hydrateProducts() {
+  const { data, error } = await supabase
+    .from("products").select("*").order("created_at", { ascending: false });
+  if (error) return logErr("hydrateProducts", error);
+  if (!data) return;
+  if (data.length === 0) {
+    // tabla vacía: subir seed solo la primera vez
+    const rows = SEED_PRODUCTS.map(toProductRow);
+    const { error: insErr } = await supabase.from("products").upsert(rows);
+    if (!insErr) write(KEYS.products, SEED_PRODUCTS);
+    return;
+  }
+  write(KEYS.products, data.map(fromProductRow));
+}
+
+async function hydrateOrders() {
+  const { data, error } = await supabase
+    .from("orders").select("*").order("created_at", { ascending: false }).limit(200);
+  if (error) return logErr("hydrateOrders", error);
+  if (!data) return;
+  const orders: Order[] = data.map((d: any) => ({
+    code: d.code, items: d.items, total: d.total,
+    dedicatoria: d.dedicatoria ?? undefined, customer: d.customer ?? undefined,
+    status: d.status, createdAt: new Date(d.created_at).getTime(),
+  }));
+  write(KEYS.orders, orders);
+}
+
+async function hydrateSettings() {
+  const { data, error } = await supabase.from("site_settings").select("*");
+  if (error) return logErr("hydrateSettings", error);
+  if (!data) return;
+  const banner = data.find((x: any) => x.key === "banner")?.value as Banner | undefined;
+  const popup  = data.find((x: any) => x.key === "popup")?.value  as Popup  | undefined;
+  if (banner) write(KEYS.banner, banner);
+  else if (SUPABASE_READY) {
+    await supabase.from("site_settings").upsert({ key: "banner", value: DEFAULT_BANNER });
+  }
+  if (popup) write(KEYS.popup, popup);
+  else if (SUPABASE_READY) {
+    await supabase.from("site_settings").upsert({ key: "popup", value: DEFAULT_POPUP });
+  }
+}
 
 export function generateTrackingCode(): string {
   const n = Math.floor(1000 + Math.random() * 9000);
