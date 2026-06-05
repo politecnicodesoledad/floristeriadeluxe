@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Toaster } from "@/components/ui/sonner";
 import { TopBar } from "@/components/layout/TopBar";
 import { Navbar } from "@/components/layout/Navbar";
@@ -7,6 +7,7 @@ import { Footer } from "@/components/layout/Footer";
 import { WhatsAppFAB } from "@/components/layout/WhatsAppFAB";
 import { CartDrawer } from "@/components/CartDrawer";
 import { PromoPopup } from "@/components/PromoPopup";
+import { hydrateAll } from "@/lib/store";
 
 import Home from "@/pages/Home";
 import Tienda from "@/pages/Tienda";
@@ -20,6 +21,7 @@ import NotFound from "@/pages/NotFound";
 
 export default function App() {
   const [cartOpen, setCartOpen] = useState(false);
+  useEffect(() => { hydrateAll(); }, []);
   return (
     <div className="min-h-screen flex flex-col bg-background">
       <TopBar />
