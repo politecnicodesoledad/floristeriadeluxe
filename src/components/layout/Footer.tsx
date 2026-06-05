@@ -34,6 +34,8 @@ export function Footer() {
             <li><Link to="/quienes-somos" className="hover:text-burgundy">Quiénes Somos</Link></li>
             <li><Link to="/contacto" className="hover:text-burgundy">Contacto</Link></li>
             <li><Link to="/mi-cuenta" className="hover:text-burgundy">Mi Cuenta</Link></li>
+            <li><Link to="/terminos" className="hover:text-burgundy">Términos y Condiciones</Link></li>
+            <li><Link to="/privacidad" className="hover:text-burgundy">Política de Privacidad</Link></li>
           </ul>
         </div>
 
