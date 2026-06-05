@@ -1,16 +1,15 @@
-import { useMemo, useState } from "react";
+import { useMemo } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
-import { Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
+import { CreditCard, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart, useProducts } from "@/lib/hooks";
-import { formatCOP, generateTrackingCode, store, WHATSAPP_NUMBER } from "@/lib/store";
-import { TrackingModal } from "./TrackingModal";
-import { Link } from "react-router-dom";
+import { formatCOP, store } from "@/lib/store";
+import { Link, useNavigate } from "react-router-dom";
 
 export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const { items } = useCart();
   const { products } = useProducts();
-  const [tracking, setTracking] = useState<string | null>(null);
+  const nav = useNavigate();
 
   const lines = useMemo(
     () =>
@@ -25,27 +24,9 @@ export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
 
   const total = lines.reduce((s, l) => s + l.product.price * l.qty, 0);
 
-  const orderWhatsApp = () => {
-    if (lines.length === 0) return;
-    const code = generateTrackingCode();
-    const origin = typeof window !== "undefined" ? window.location.origin : "";
-    const summary = lines
-      .map(
-        (l, idx) =>
-          `${idx + 1}. ${l.product.title} x${l.qty} — ${formatCOP(l.product.price * l.qty)}\n   ${origin}/producto/${l.product.id}`,
-      )
-      .join("\n");
-    const message = `Hola Floristería Deluxe 🌷\nQuiero hacer el siguiente pedido:\n\n${summary}\n\n*Total:* ${formatCOP(total)}\n*Código de seguimiento:* ${code}`;
-    store.addOrder({
-      code,
-      items: lines.map((l) => ({ productId: l.productId, title: l.product.title, qty: l.qty, price: l.product.price })),
-      total,
-      status: "Recibido",
-      createdAt: Date.now(),
-    });
-    store.clearCart();
-    setTracking(code);
-    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(message)}`, "_blank");
+  const goCheckout = () => {
+    onOpenChange(false);
+    nav("/checkout");
   };
 
   return (
@@ -108,20 +89,14 @@ export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
                 <span className="font-serif text-burgundy text-lg">Total</span>
                 <span className="font-serif text-burgundy text-xl font-semibold">{formatCOP(total)}</span>
               </div>
-              <Button onClick={orderWhatsApp} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-12 text-base">
-                Pedir por WhatsApp
+              <Button onClick={goCheckout} className="w-full bg-burgundy hover:bg-burgundy-light text-primary-foreground h-12 text-base">
+                <CreditCard className="w-4 h-4 mr-2" /> Finalizar compra
               </Button>
-              <div>
-                <Button disabled className="w-full h-11 bg-burgundy/40 text-white cursor-not-allowed">
-                  Pagar con Bold
-                </Button>
-                <p className="text-[11px] text-center text-muted-foreground mt-1 italic">(Próximamente)</p>
-              </div>
+              <p className="text-[11px] text-center text-muted-foreground">Pagas en línea con Bold o confirmas por WhatsApp</p>
             </div>
           )}
         </SheetContent>
       </Sheet>
-      <TrackingModal code={tracking} onClose={() => { setTracking(null); onOpenChange(false); }} />
     </>
   );
 }

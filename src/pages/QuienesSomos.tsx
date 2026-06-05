@@ -24,11 +24,27 @@ export default function QuienesSomos() {
           <img src="https://images.unsplash.com/photo-1490750967868-88aa4486c946?w=900&q=85" alt="Tienda Floristería Deluxe" className="w-full aspect-[4/5] object-cover shadow-luxe" style={{ borderRadius: "55% 45% 50% 50% / 40% 40% 60% 60%" }} />
         </Reveal>
         <Reveal direction="right">
-          <h2 className="font-serif text-3xl md:text-4xl text-burgundy italic">Pasión por cada detalle para tus fechas especiales.</h2>
+          <h2 className="font-serif text-3xl md:text-4xl text-burgundy italic">Floristería de lujo: sentimientos hechos flor.</h2>
           <div className="space-y-4 mt-5 text-muted-foreground italic leading-relaxed">
-            <p>Desde el 2010 Floristería Deluxe ha logrado ofrecer una gran variedad de diseños florales, incluyendo las más frescas y hermosas especies.</p>
-            <p>La calidad de nuestras flores puede notarla al apreciar el color y el aroma de las variedades que empleamos.</p>
-            <p>Lanzamos floristeriadeluxe.com con entregas a domicilio en Barranquilla, Soledad y el área metropolitana.</p>
+            <p>
+              <b className="text-burgundy not-italic">floristeriadeluxe.com</b> es una floristería de lujo especializada en transmitir
+              sentimientos y conectar emociones a través de sus variedades florales y todo tipo de detalles.
+            </p>
+            <p>
+              Para Floristería Deluxe lo más importante es poder materializar los sentimientos que cada uno de nuestros clientes
+              quiere transmitir o expresar, haciéndolos vivir una experiencia única e inigualable donde prime el amor, la alegría,
+              el agradecimiento y la reconciliación.
+            </p>
+          </div>
+        </Reveal>
+      </section>
+      <section className="container mx-auto px-4 py-6">
+        <Reveal>
+          <h3 className="font-serif text-2xl md:text-3xl text-burgundy italic text-center">Nuestra historia</h3>
+          <div className="max-w-3xl mx-auto mt-5 space-y-4 text-muted-foreground italic leading-relaxed text-center md:text-left">
+            <p>Desde el 2010 floristería Deluxe ha logrado ofrecer una gran variedad de diseños florales, incluyendo las más frescas y hermosas especies.</p>
+            <p>La calidad de nuestras flores puede notarla al apreciar el color y el aroma de las variedades que empleamos. La duración es sin duda el principal elemento a considerar en la escala de cualidades que maneja nuestros productos.</p>
+            <p>Para dinamizar el mercado, la floristería recientemente lanzó <b className="text-burgundy not-italic">floristeriadeluxe.com</b>: una tienda de detalles y flores online con entregas a domicilio en cualquier lugar de Barranquilla, Soledad y su área metropolitana. Ofrecemos una atención profesional en el diseño, calidad y precios de cada uno de nuestros detalles, arreglos florales y servicios, siendo nuestros principales valores la <b className="text-burgundy not-italic">amabilidad, honestidad y responsabilidad</b>.</p>
           </div>
         </Reveal>
       </section>

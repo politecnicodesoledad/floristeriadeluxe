@@ -77,3 +77,9 @@
 @utility bg-gradient-hero { background-image: var(--gradient-hero); }
 @utility bg-gradient-cream { background-image: var(--gradient-cream); }
 @utility bg-gradient-rose { background-image: var(--gradient-rose); }
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+}
+.no-scrollbar::-webkit-scrollbar { display: none; }

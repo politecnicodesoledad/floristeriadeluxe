@@ -1,7 +1,8 @@
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { Menu, ShoppingBag, User, X } from "lucide-react";
+import { LogIn, Menu, ShoppingBag, User, X } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useCart } from "@/lib/hooks";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 
 const links = [
@@ -10,11 +11,11 @@ const links = [
   { to: "/dedicatoria", label: "Dedicatoria" },
   { to: "/quienes-somos", label: "Quiénes Somos" },
   { to: "/contacto", label: "Contacto" },
-  { to: "/mi-cuenta", label: "Mi Cuenta" },
 ];
 
 export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
   const { count } = useCart();
+  const { user, profile } = useAuth();
   const [open, setOpen] = useState(false);
   const location = useLocation();
 
@@ -67,11 +68,22 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
               </span>
             )}
           </Button>
-          <Link to="/mi-cuenta" className="hidden md:inline-flex">
-            <Button variant="ghost" size="icon" className="text-burgundy hover:bg-rose-soft" aria-label="Mi cuenta">
-              <User className="w-5 h-5" />
-            </Button>
-          </Link>
+          {user ? (
+            <Link to="/mi-cuenta" className="hidden md:inline-flex items-center">
+              <Button variant="ghost" className="text-burgundy hover:bg-rose-soft gap-1.5 h-9 px-3" aria-label="Mi cuenta">
+                <User className="w-4 h-4" />
+                <span className="text-xs font-medium max-w-[100px] truncate">
+                  {profile?.full_name?.split(" ")[0] || "Mi cuenta"}
+                </span>
+              </Button>
+            </Link>
+          ) : (
+            <Link to="/login" className="hidden md:inline-flex">
+              <Button variant="ghost" className="text-burgundy hover:bg-rose-soft gap-1.5 h-9 px-3">
+                <LogIn className="w-4 h-4" /><span className="text-xs">Entrar</span>
+              </Button>
+            </Link>
+          )}
           <button
             onClick={() => setOpen((v) => !v)}
             className="lg:hidden p-2 text-burgundy"
@@ -99,6 +111,14 @@ export function Navbar({ onOpenCart }: { onOpenCart: () => void }) {
                 {l.label}
               </NavLink>
             ))}
+            {user ? (
+              <NavLink to="/mi-cuenta" className="py-3 px-2 font-serif italic text-burgundy">Mi Cuenta</NavLink>
+            ) : (
+              <>
+                <NavLink to="/login" className="py-3 px-2 font-serif italic text-burgundy">Iniciar sesión</NavLink>
+                <NavLink to="/registro" className="py-3 px-2 font-serif italic text-rose-deep">Crear cuenta</NavLink>
+              </>
+            )}
           </nav>
         </div>
       )}

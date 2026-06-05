@@ -43,12 +43,4 @@ export function useBanner() {
   return banner;
 }
 
-export function useUser() {
-  const [user, setUser] = useState(() => store.getUser());
-  const refresh = useCallback(() => setUser(store.getUser()), []);
-  useEffect(() => {
-    refresh();
-  }, [refresh]);
-  useStoreEvent(refresh);
-  return user;
-}
+// (legacy useUser eliminado — usa useAuth() de @/contexts/AuthContext)
