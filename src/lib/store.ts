@@ -1,7 +1,7 @@
-// Hybrid store: localStorage cache + Supabase as source of truth.
-// - Reads stay synchronous (cache) so components don't need refactor.
-// - On mount the app calls `hydrateAll()` to pull fresh data and emit events.
-// - Mutations write to cache (optimistic) and push to Supabase in background.
+// Hybrid store v2: Supabase es la fuente de verdad para productos/pedidos/settings.
+// localStorage solo guarda el carrito y un cache de lectura para que la UI sea instantánea.
+// Las mutaciones que requieren rol admin (productos, settings, orders.update) usan el cliente
+// autenticado: si el usuario no es admin, la RLS rechaza la operación.
 
 import { supabase, SUPABASE_READY } from "./supabase";
 
@@ -20,10 +20,17 @@ export type CartItem = { productId: string; qty: number };
 
 export type Order = {
   code: string;
+  user_id?: string | null;
   items: { productId: string; title: string; qty: number; price: number }[];
   total: number;
+  subtotal?: number;
+  discount?: number;
+  coupon_code?: string | null;
   dedicatoria?: string;
   customer?: { name?: string; phone?: string; address?: string };
+  shipping_address?: Record<string, unknown> | null;
+  payment_method?: "whatsapp" | "bold";
+  payment_status?: "pending" | "paid" | "failed";
   status: "Recibido" | "En preparación" | "En camino" | "Entregado";
   createdAt: number;
 };
@@ -53,8 +60,6 @@ const KEYS = {
   banner: "fdx.banner",
   popup: "fdx.popup",
   popupSeen: "fdx.popup.seen",
-  user: "fdx.user",
-  admin: "fdx.admin",
 } as const;
 
 const isBrowser = () => typeof window !== "undefined";
@@ -245,19 +250,35 @@ export const store = {
     store.saveCart([]);
   },
 
-  // Orders
+  // Orders (cache — usa fetchUserOrders / fetchAllOrders para datos frescos)
   getOrders(): Order[] {
     return read<Order[]>(KEYS.orders, []);
   },
-  addOrder(o: Order) {
-    write(KEYS.orders, [o, ...store.getOrders()]);
+  async addOrder(o: Order): Promise<Order> {
+    // si está logueado, asocia el pedido
+    const { data: { user } } = await supabase.auth.getUser();
+    const full: Order = { ...o, user_id: user?.id ?? null };
+    write(KEYS.orders, [full, ...store.getOrders()]);
     if (SUPABASE_READY) {
-      supabase.from("orders").insert({
-        code: o.code, items: o.items, total: o.total,
-        dedicatoria: o.dedicatoria ?? null, customer: o.customer ?? null,
-        status: o.status, created_at: new Date(o.createdAt).toISOString(),
-      }).then(({ error }) => logErr("addOrder", error));
+      const { error } = await supabase.from("orders").insert({
+        code: full.code,
+        user_id: full.user_id ?? null,
+        items: full.items,
+        total: full.total,
+        subtotal: full.subtotal ?? full.total,
+        discount: full.discount ?? 0,
+        coupon_code: full.coupon_code ?? null,
+        dedicatoria: full.dedicatoria ?? null,
+        customer: full.customer ?? null,
+        shipping_address: full.shipping_address ?? null,
+        payment_method: full.payment_method ?? "whatsapp",
+        payment_status: full.payment_status ?? "pending",
+        status: full.status,
+        created_at: new Date(full.createdAt).toISOString(),
+      });
+      logErr("addOrder", error);
     }
+    return full;
   },
   updateOrderStatus(code: string, status: Order["status"]) {
     write(
@@ -268,6 +289,19 @@ export const store = {
       supabase.from("orders").update({ status }).eq("code", code).then(({ error }) => logErr("updateOrderStatus", error));
     }
   },
+  async fetchUserOrders(userId: string): Promise<Order[]> {
+    const { data, error } = await supabase
+      .from("orders").select("*").eq("user_id", userId)
+      .order("created_at", { ascending: false }).limit(100);
+    if (error || !data) { logErr("fetchUserOrders", error); return []; }
+    return data.map(rowToOrder);
+  },
+  async fetchAllOrders(): Promise<Order[]> {
+    const { data, error } = await supabase
+      .from("orders").select("*").order("created_at", { ascending: false }).limit(500);
+    if (error || !data) { logErr("fetchAllOrders", error); return []; }
+    return data.map(rowToOrder);
+  },
   findOrder(code: string) {
     return store.getOrders().find((o) => o.code.toLowerCase() === code.toLowerCase());
   },
@@ -276,15 +310,18 @@ export const store = {
     const { data, error } = await supabase
       .from("orders").select("*").ilike("code", code.trim()).maybeSingle();
     if (error || !data) return store.findOrder(code) ?? null;
-    const o: Order = {
-      code: data.code, items: data.items, total: data.total,
-      dedicatoria: data.dedicatoria ?? undefined, customer: data.customer ?? undefined,
-      status: data.status, createdAt: new Date(data.created_at).getTime(),
-    };
+    const o = rowToOrder(data);
     // refresh cache so historial muestra el pedido
     const cached = store.getOrders().filter((x) => x.code !== o.code);
     write(KEYS.orders, [o, ...cached]);
     return o;
+  },
+  async applyCoupon(code: string): Promise<{ code: string; discount_percent: number } | null> {
+    if (!code.trim()) return null;
+    const { data, error } = await supabase.rpc("apply_coupon", { _code: code.trim() });
+    if (error) { logErr("applyCoupon", error); return null; }
+    const row = Array.isArray(data) ? data[0] : data;
+    return row ?? null;
   },
 
   // Banner / Popup
@@ -316,23 +353,26 @@ export const store = {
   markPopupSeen(id: string) {
     if (isBrowser()) localStorage.setItem(KEYS.popupSeen, id);
   },
-
-  // User (mock auth)
-  getUser(): { loggedIn: boolean; name: string } {
-    return read(KEYS.user, { loggedIn: false, name: "Invitado" });
-  },
-  setUser(u: { loggedIn: boolean; name: string }) {
-    write(KEYS.user, u);
-  },
-
-  // Admin
-  isAdmin(): boolean {
-    return read<boolean>(KEYS.admin, false);
-  },
-  setAdmin(v: boolean) {
-    write(KEYS.admin, v);
-  },
 };
+
+function rowToOrder(d: any): Order {
+  return {
+    code: d.code,
+    user_id: d.user_id ?? null,
+    items: d.items,
+    total: d.total,
+    subtotal: d.subtotal ?? undefined,
+    discount: d.discount ?? 0,
+    coupon_code: d.coupon_code ?? null,
+    dedicatoria: d.dedicatoria ?? undefined,
+    customer: d.customer ?? undefined,
+    shipping_address: d.shipping_address ?? null,
+    payment_method: d.payment_method ?? "whatsapp",
+    payment_status: d.payment_status ?? "pending",
+    status: d.status,
+    createdAt: new Date(d.created_at).getTime(),
+  };
+}
 
 // ============================================================
 // Hidratación desde Supabase (se llama desde App.tsx al montar)
