@@ -459,6 +459,7 @@ async function hydrateSettings() {
   if (!data) return;
   const banner = data.find((x: any) => x.key === "banner")?.value as Banner | undefined;
   const popup  = data.find((x: any) => x.key === "popup")?.value  as Popup  | undefined;
+  const images = data.find((x: any) => x.key === "site_images")?.value as SiteImages | undefined;
   if (banner) write(KEYS.banner, banner);
   else if (SUPABASE_READY) {
     await supabase.from("site_settings").upsert({ key: "banner", value: DEFAULT_BANNER });
@@ -467,6 +468,7 @@ async function hydrateSettings() {
   else if (SUPABASE_READY) {
     await supabase.from("site_settings").upsert({ key: "popup", value: DEFAULT_POPUP });
   }
+  if (images) write(KEYS.images, images);
 }
 
 export function generateTrackingCode(): string {
