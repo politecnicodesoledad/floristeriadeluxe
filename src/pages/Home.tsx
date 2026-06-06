@@ -187,7 +187,7 @@ export default function Home() {
               <h3 className="font-serif text-3xl md:text-5xl leading-tight text-cream">{banner.promoTitle}</h3>
               <p className="mt-4 text-cream/90 max-w-md italic">{banner.promoSubtitle}</p>
               <Link to="/tienda?cat=Cumplea%C3%B1os" className="mt-6">
-                <Button variant="outline" className="border-cream text-cream hover:bg-cream hover:text-burgundy w-fit rounded-none px-7 h-11 tracking-[0.25em] text-xs">
+                <Button className="bg-cream text-burgundy hover:bg-background w-fit rounded-full px-8 h-11 tracking-[0.2em] text-xs shadow-soft">
                   EXPLORAR
                 </Button>
               </Link>
