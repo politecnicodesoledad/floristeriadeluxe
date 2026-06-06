@@ -6,11 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { store, type Banner, type Order, type Popup, type Product, formatCOP } from "@/lib/store";
+import { store, SITE_IMAGE_SLOTS, type Banner, type Order, type Popup, type Product, type SiteImages, formatCOP } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBanner, useProducts } from "@/lib/hooks";
-import { LogOut, Pencil, Plus, Save, Trash2, Image as ImageIcon, Tag, Package, Users, Settings, Ticket } from "lucide-react";
+import { useBanner, useProducts, useSiteImages } from "@/lib/hooks";
+import { LogOut, Pencil, Plus, Save, Trash2, Image as ImageIcon, Images as ImagesIcon, Tag, Package, Users, Settings, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
 const CATS = ["Cumpleaños", "Bodas", "Fúnebre", "Desayunos"];
@@ -39,6 +39,7 @@ export default function Control() {
             <TabsTrigger value="orders"><Tag className="w-3.5 h-3.5 mr-1" />Pedidos</TabsTrigger>
             <TabsTrigger value="coupons"><Ticket className="w-3.5 h-3.5 mr-1" />Cupones</TabsTrigger>
             <TabsTrigger value="content"><ImageIcon className="w-3.5 h-3.5 mr-1" />Contenido</TabsTrigger>
+            <TabsTrigger value="gallery"><ImagesIcon className="w-3.5 h-3.5 mr-1" />Galería</TabsTrigger>
             <TabsTrigger value="clients"><Users className="w-3.5 h-3.5 mr-1" />Clientes</TabsTrigger>
             <TabsTrigger value="settings"><Settings className="w-3.5 h-3.5 mr-1" />Popup</TabsTrigger>
           </TabsList>
@@ -46,6 +47,7 @@ export default function Control() {
           <TabsContent value="orders"   className="mt-6"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"  className="mt-6"><CouponsTab /></TabsContent>
           <TabsContent value="content"  className="mt-6"><BannersTab /></TabsContent>
+          <TabsContent value="gallery"  className="mt-6"><GalleryTab /></TabsContent>
           <TabsContent value="clients"  className="mt-6"><ClientsTab /></TabsContent>
           <TabsContent value="settings" className="mt-6"><PopupsTab /></TabsContent>
         </Tabs>
