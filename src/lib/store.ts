@@ -53,6 +53,36 @@ export type Popup = {
   ctaHref?: string;
 };
 
+export type SiteImages = Record<string, string>;
+
+export const SITE_IMAGE_SLOTS: { key: string; label: string; hint: string }[] = [
+  { key: "hero_bouquet",  label: "Home · Ramo principal (PNG sin fondo)", hint: "Imagen del ramo que aparece dentro del marco floral." },
+  { key: "hero_frame",    label: "Home · Marco floral (PNG transparente)", hint: "El marco que rodea el ramo y rota suavemente." },
+  { key: "cat_cumple",    label: "Home · Categoría Cumpleaños",  hint: "Foto circular de la categoría." },
+  { key: "cat_bodas",     label: "Home · Categoría Bodas",       hint: "Foto circular de la categoría." },
+  { key: "cat_funebre",   label: "Home · Categoría Fúnebre",     hint: "Foto circular de la categoría." },
+  { key: "cat_desayunos", label: "Home · Categoría Desayunos",   hint: "Foto circular de la categoría." },
+  { key: "promo_banner",  label: "Home · Banner promocional",    hint: "Imagen lateral del bloque 'Mejor que un pastel'." },
+  { key: "eventos",       label: "Home · Decoramos tus eventos", hint: "Imagen del bloque de eventos." },
+  { key: "acerca",        label: "Home · Acerca de nosotros",    hint: "Imagen con marco orgánico." },
+  { key: "club_logo",     label: "Home · Logo Club Puntos Deluxe", hint: "Logo redondo del club." },
+  { key: "site_logo",     label: "Logo de la marca (Navbar / Footer)", hint: "Logo principal del sitio." },
+];
+
+export const DEFAULT_SITE_IMAGES: SiteImages = {
+  hero_bouquet:  "",
+  hero_frame:    "",
+  cat_cumple:    "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=600&q=80",
+  cat_bodas:     "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80",
+  cat_funebre:   "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=600&q=80",
+  cat_desayunos: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=600&q=80",
+  promo_banner:  "https://images.unsplash.com/photo-1455659817273-f96807779a8a?w=1200&q=85",
+  eventos:       "https://images.unsplash.com/photo-1519741497674-611481863552?w=900&q=85",
+  acerca:        "https://images.unsplash.com/photo-1487070183336-b863922373d4?w=900&q=85",
+  club_logo:     "https://i.ibb.co/yc50fWW4/Captura-de-pantalla-2026-04-24-001156.png",
+  site_logo:     "https://i.ibb.co/NgPCTK4k/Logo-Floristeria-Deluxe.png",
+};
+
 const KEYS = {
   products: "fdx.products",
   cart: "fdx.cart",
@@ -60,6 +90,7 @@ const KEYS = {
   banner: "fdx.banner",
   popup: "fdx.popup",
   popupSeen: "fdx.popup.seen",
+  images: "fdx.images",
 } as const;
 
 const isBrowser = () => typeof window !== "undefined";
@@ -352,6 +383,18 @@ export const store = {
   },
   markPopupSeen(id: string) {
     if (isBrowser()) localStorage.setItem(KEYS.popupSeen, id);
+  },
+
+  // Site images (galería editable)
+  getSiteImages(): SiteImages {
+    return { ...DEFAULT_SITE_IMAGES, ...read<SiteImages>(KEYS.images, {}) };
+  },
+  saveSiteImages(images: SiteImages) {
+    write(KEYS.images, images);
+    if (SUPABASE_READY) {
+      supabase.from("site_settings").upsert({ key: "site_images", value: images, updated_at: new Date().toISOString() })
+        .then(({ error }) => logErr("saveSiteImages", error));
+    }
   },
 };
 
