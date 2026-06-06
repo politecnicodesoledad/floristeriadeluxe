@@ -43,4 +43,12 @@ export function useBanner() {
   return banner;
 }
 
+export function useSiteImages() {
+  const [images, setImages] = useState(() => store.getSiteImages());
+  const refresh = useCallback(() => setImages(store.getSiteImages()), []);
+  useEffect(() => { refresh(); }, [refresh]);
+  useStoreEvent(refresh);
+  return images;
+}
+
 // (legacy useUser eliminado — usa useAuth() de @/contexts/AuthContext)

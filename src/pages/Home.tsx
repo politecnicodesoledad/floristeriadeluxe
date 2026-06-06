@@ -5,16 +5,9 @@ import { ArrowRight, Award, Flower, Gift, MapPin, MessageCircle, Truck } from "l
 import { Reveal } from "@/components/Reveal";
 import { ProductCard } from "@/components/ProductCard";
 import { Button } from "@/components/ui/button";
-import { useBanner, useProducts } from "@/lib/hooks";
+import { useBanner, useProducts, useSiteImages } from "@/lib/hooks";
 import heroFrame from "@/assets/hero-floral-frame.png";
 import heroBouquet from "@/assets/hero-bouquet.png";
-
-const categories = [
-  { name: "Cumpleaños", slug: "Cumpleaños", img: "https://images.unsplash.com/photo-1561181286-d3fee7d55364?w=600&q=80" },
-  { name: "Bodas", slug: "Bodas", img: "https://images.unsplash.com/photo-1519225421980-715cb0215aed?w=600&q=80" },
-  { name: "Fúnebre", slug: "Fúnebre", img: "https://images.unsplash.com/photo-1487530811176-3780de880c2d?w=600&q=80" },
-  { name: "Desayunos", slug: "Desayunos", img: "https://images.unsplash.com/photo-1490818387583-1baba5e638af?w=600&q=80" },
-];
 
 const promises = [
   { icon: Flower, title: "Arreglos Exclusivos", text: "Más de 230 diseños florales únicos disponibles." },
@@ -26,7 +19,16 @@ const promises = [
 export default function Home() {
   const banner = useBanner();
   const { products } = useProducts();
+  const images = useSiteImages();
   const featured = products.filter((p) => p.featured).slice(0, 4);
+  const categories = [
+    { name: "Cumpleaños", slug: "Cumpleaños", img: images.cat_cumple },
+    { name: "Bodas",      slug: "Bodas",      img: images.cat_bodas },
+    { name: "Fúnebre",    slug: "Fúnebre",    img: images.cat_funebre },
+    { name: "Desayunos",  slug: "Desayunos",  img: images.cat_desayunos },
+  ];
+  const bouquetSrc = images.hero_bouquet || heroBouquet;
+  const frameSrc   = images.hero_frame   || heroFrame;
 
   return (
     <>
@@ -38,7 +40,7 @@ export default function Home() {
       {/* HERO */}
       <section className="relative overflow-hidden bg-gradient-hero">
         <div className="absolute top-10 left-6 w-24 h-24 opacity-30 hidden md:block">
-          <img src="https://i.ibb.co/NgPCTK4k/Logo-Floristeria-Deluxe.png" alt="" className="w-full h-full object-contain blur-sm" />
+          <img src={images.site_logo} alt="" className="w-full h-full object-contain blur-sm" />
         </div>
         <div className="container mx-auto px-4 py-14 md:py-24 grid md:grid-cols-2 gap-10 items-center">
           <Reveal direction="left">
@@ -78,7 +80,7 @@ export default function Home() {
               <div className="absolute inset-6 bg-gradient-to-br from-rose-mid/40 to-cream rounded-full blur-2xl" />
               {/* bouquet PNG centrado */}
               <motion.img
-                src={heroBouquet}
+                src={bouquetSrc}
                 alt="Ramo de rosas premium"
                 width={768}
                 height={1024}
@@ -87,16 +89,19 @@ export default function Home() {
                 transition={{ duration: 1, ease: "easeOut" }}
                 className="absolute inset-0 m-auto w-[58%] h-[58%] object-contain drop-shadow-2xl z-10"
               />
-              {/* marco floral PNG rotando suave */}
+              {/* marco floral PNG en rotación lenta infinita */}
               <motion.img
-                src={heroFrame}
+                src={frameSrc}
                 alt=""
                 aria-hidden
                 width={1024}
                 height={1024}
-                initial={{ opacity: 0, rotate: -8 }}
-                animate={{ opacity: 1, rotate: 0 }}
-                transition={{ duration: 1.4, ease: "easeOut" }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1, rotate: 360 }}
+                transition={{
+                  opacity: { duration: 1.4, ease: "easeOut" },
+                  rotate:  { duration: 60, ease: "linear", repeat: Infinity },
+                }}
                 className="relative w-full h-full object-contain"
               />
               <motion.div
@@ -194,7 +199,7 @@ export default function Home() {
             </div>
             <div
               className="min-h-[200px] bg-cover bg-center"
-              style={{ backgroundImage: "url(https://images.unsplash.com/photo-1455659817273-f96807779a8a?w=1200&q=85)" }}
+              style={{ backgroundImage: `url(${images.promo_banner})` }}
             />
           </div>
         </Reveal>
@@ -206,7 +211,7 @@ export default function Home() {
           <div className="bg-gradient-to-br from-rose-soft via-cream to-accent/20 rounded-3xl p-8 md:p-14 text-center border border-rose-mid/40">
             <div className="flex justify-center mb-4">
               <img
-                src="https://i.ibb.co/yc50fWW4/Captura-de-pantalla-2026-04-24-001156.png"
+                src={images.club_logo}
                 alt="Club de Puntos Deluxe"
                 className="h-16 w-16 object-contain"
               />
@@ -231,7 +236,7 @@ export default function Home() {
         <div className="grid md:grid-cols-2 gap-8 md:gap-12 items-center">
           <Reveal direction="left">
             <img
-              src="https://images.unsplash.com/photo-1519741497674-611481863552?w=900&q=85"
+              src={images.eventos}
               alt="Decoración de evento"
               className="rounded-3xl shadow-luxe w-full aspect-[4/3] object-cover"
             />
@@ -274,7 +279,7 @@ export default function Home() {
           <Reveal direction="right">
             <div className="relative">
               <img
-                src="https://images.unsplash.com/photo-1487070183336-b863922373d4?w=900&q=85"
+                src={images.acerca}
                 alt="Tienda Floristería Deluxe"
                 className="rounded-[3rem] shadow-luxe w-full aspect-[4/5] object-cover"
                 style={{ borderRadius: "55% 45% 50% 50% / 40% 40% 60% 60%" }}

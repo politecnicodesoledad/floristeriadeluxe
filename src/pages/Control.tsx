@@ -6,11 +6,11 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { store, type Banner, type Order, type Popup, type Product, formatCOP } from "@/lib/store";
+import { store, SITE_IMAGE_SLOTS, type Banner, type Order, type Popup, type Product, type SiteImages, formatCOP } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
-import { useBanner, useProducts } from "@/lib/hooks";
-import { LogOut, Pencil, Plus, Save, Trash2, Image as ImageIcon, Tag, Package, Users, Settings, Ticket } from "lucide-react";
+import { useBanner, useProducts, useSiteImages } from "@/lib/hooks";
+import { LogOut, Pencil, Plus, Save, Trash2, Image as ImageIcon, Images as ImagesIcon, Tag, Package, Users, Settings, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
 const CATS = ["Cumpleaños", "Bodas", "Fúnebre", "Desayunos"];
@@ -39,6 +39,7 @@ export default function Control() {
             <TabsTrigger value="orders"><Tag className="w-3.5 h-3.5 mr-1" />Pedidos</TabsTrigger>
             <TabsTrigger value="coupons"><Ticket className="w-3.5 h-3.5 mr-1" />Cupones</TabsTrigger>
             <TabsTrigger value="content"><ImageIcon className="w-3.5 h-3.5 mr-1" />Contenido</TabsTrigger>
+            <TabsTrigger value="gallery"><ImagesIcon className="w-3.5 h-3.5 mr-1" />Galería</TabsTrigger>
             <TabsTrigger value="clients"><Users className="w-3.5 h-3.5 mr-1" />Clientes</TabsTrigger>
             <TabsTrigger value="settings"><Settings className="w-3.5 h-3.5 mr-1" />Popup</TabsTrigger>
           </TabsList>
@@ -46,6 +47,7 @@ export default function Control() {
           <TabsContent value="orders"   className="mt-6"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"  className="mt-6"><CouponsTab /></TabsContent>
           <TabsContent value="content"  className="mt-6"><BannersTab /></TabsContent>
+          <TabsContent value="gallery"  className="mt-6"><GalleryTab /></TabsContent>
           <TabsContent value="clients"  className="mt-6"><ClientsTab /></TabsContent>
           <TabsContent value="settings" className="mt-6"><PopupsTab /></TabsContent>
         </Tabs>
@@ -385,6 +387,78 @@ function PopupsTab() {
           <div><label className="text-xs text-burgundy">Link CTA</label><Input value={popup.ctaHref || ""} onChange={(e) => setPopup({ ...popup, ctaHref: e.target.value })} placeholder="/tienda" /></div>
         </div>
         <Button onClick={save} className="bg-burgundy text-primary-foreground"><Save className="w-4 h-4 mr-1" /> Guardar</Button>
+      </div>
+    </div>
+  );
+}
+
+/* ============ GALERÍA ============ */
+function GalleryTab() {
+  const current = useSiteImages();
+  const [draft, setDraft] = useState<SiteImages>(current);
+  useEffect(() => { setDraft(current); }, [current]);
+
+  const setSlot = (key: string, url: string) => setDraft((d) => ({ ...d, [key]: url }));
+  const onFile = (key: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => setSlot(key, String(reader.result));
+    reader.readAsDataURL(file);
+  };
+  const saveAll = () => {
+    store.saveSiteImages(draft);
+    toast.success("Galería actualizada ✨");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-rose-soft/60 border border-rose-mid/40 rounded-2xl p-4 text-sm text-burgundy">
+        Aquí puedes cambiar todas las imágenes de la web. Pega una URL pública (ej: ibb.co, Unsplash) o sube una imagen desde tu equipo. Los cambios se guardan en tu base de datos y aparecen en toda la página al instante.
+      </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        {SITE_IMAGE_SLOTS.map((slot) => (
+          <div key={slot.key} className="bg-card border border-border/60 rounded-2xl p-4 shadow-soft">
+            <div className="flex gap-3">
+              <div className="w-20 h-20 rounded-xl overflow-hidden bg-rose-soft shrink-0 flex items-center justify-center">
+                {draft[slot.key]
+                  ? <img src={draft[slot.key]} alt="" className="w-full h-full object-cover" />
+                  : <ImageIcon className="w-6 h-6 text-rose-mid" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-serif text-burgundy text-sm leading-tight">{slot.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{slot.hint}</p>
+              </div>
+            </div>
+            <div className="mt-3 space-y-2">
+              <Input
+                value={draft[slot.key] || ""}
+                onChange={(e) => setSlot(slot.key, e.target.value)}
+                placeholder="https://..."
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => e.target.files?.[0] && onFile(slot.key, e.target.files[0])}
+                  className="text-xs flex-1 border border-dashed border-rose-mid rounded-lg p-1.5"
+                />
+                {draft[slot.key] && (
+                  <button
+                    onClick={() => setSlot(slot.key, "")}
+                    className="text-xs text-destructive hover:underline px-2"
+                    type="button"
+                  >
+                    Vaciar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="sticky bottom-4 flex justify-end">
+        <Button onClick={saveAll} size="lg" className="bg-burgundy hover:bg-burgundy-light text-primary-foreground shadow-luxe">
+          <Save className="w-4 h-4 mr-2" /> Guardar toda la galería
+        </Button>
       </div>
     </div>
   );
