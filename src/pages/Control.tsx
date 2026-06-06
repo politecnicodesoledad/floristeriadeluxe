@@ -391,3 +391,75 @@ function PopupsTab() {
     </div>
   );
 }
+
+/* ============ GALERÍA ============ */
+function GalleryTab() {
+  const current = useSiteImages();
+  const [draft, setDraft] = useState<SiteImages>(current);
+  useEffect(() => { setDraft(current); }, [current]);
+
+  const setSlot = (key: string, url: string) => setDraft((d) => ({ ...d, [key]: url }));
+  const onFile = (key: string, file: File) => {
+    const reader = new FileReader();
+    reader.onload = () => setSlot(key, String(reader.result));
+    reader.readAsDataURL(file);
+  };
+  const saveAll = () => {
+    store.saveSiteImages(draft);
+    toast.success("Galería actualizada ✨");
+  };
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-rose-soft/60 border border-rose-mid/40 rounded-2xl p-4 text-sm text-burgundy">
+        Aquí puedes cambiar todas las imágenes de la web. Pega una URL pública (ej: ibb.co, Unsplash) o sube una imagen desde tu equipo. Los cambios se guardan en tu base de datos y aparecen en toda la página al instante.
+      </div>
+      <div className="grid md:grid-cols-2 gap-4">
+        {SITE_IMAGE_SLOTS.map((slot) => (
+          <div key={slot.key} className="bg-card border border-border/60 rounded-2xl p-4 shadow-soft">
+            <div className="flex gap-3">
+              <div className="w-20 h-20 rounded-xl overflow-hidden bg-rose-soft shrink-0 flex items-center justify-center">
+                {draft[slot.key]
+                  ? <img src={draft[slot.key]} alt="" className="w-full h-full object-cover" />
+                  : <ImageIcon className="w-6 h-6 text-rose-mid" />}
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="font-serif text-burgundy text-sm leading-tight">{slot.label}</p>
+                <p className="text-[11px] text-muted-foreground mt-0.5">{slot.hint}</p>
+              </div>
+            </div>
+            <div className="mt-3 space-y-2">
+              <Input
+                value={draft[slot.key] || ""}
+                onChange={(e) => setSlot(slot.key, e.target.value)}
+                placeholder="https://..."
+              />
+              <div className="flex items-center gap-2">
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => e.target.files?.[0] && onFile(slot.key, e.target.files[0])}
+                  className="text-xs flex-1 border border-dashed border-rose-mid rounded-lg p-1.5"
+                />
+                {draft[slot.key] && (
+                  <button
+                    onClick={() => setSlot(slot.key, "")}
+                    className="text-xs text-destructive hover:underline px-2"
+                    type="button"
+                  >
+                    Vaciar
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+      <div className="sticky bottom-4 flex justify-end">
+        <Button onClick={saveAll} size="lg" className="bg-burgundy hover:bg-burgundy-light text-primary-foreground shadow-luxe">
+          <Save className="w-4 h-4 mr-2" /> Guardar toda la galería
+        </Button>
+      </div>
+    </div>
+  );
+}
