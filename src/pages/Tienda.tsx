@@ -6,7 +6,16 @@ import { ProductCard } from "@/components/ProductCard";
 import { useProducts } from "@/lib/hooks";
 import { Button } from "@/components/ui/button";
 
-const CATEGORIES = ["Todos", "Cumpleaños", "Bodas", "Fúnebre", "Desayunos"];
+const CATEGORIES = [
+  "Todos",
+  "Arreglos Florales",
+  "Fúnebre",
+  "Desayunos y Anchetas",
+  "Bodas",
+  "Eventos",
+  "Plantas",
+  "Complementos",
+];
 
 export default function Tienda() {
   const { products } = useProducts();
