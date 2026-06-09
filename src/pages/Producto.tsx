@@ -1,10 +1,11 @@
 import { Helmet } from "react-helmet-async";
 import { Link, useParams } from "react-router-dom";
 import { useState } from "react";
-import { Minus, Plus, ShoppingBag } from "lucide-react";
+import { Minus, Plus, ShoppingBag, MessageCircle, CreditCard } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useProducts } from "@/lib/hooks";
-import { formatCOP, store } from "@/lib/store";
+import { formatCOP, store, WHATSAPP_NUMBER } from "@/lib/store";
+import { useNavigate } from "react-router-dom";
 import { ProductCard } from "@/components/ProductCard";
 import { Reveal } from "@/components/Reveal";
 import { toast } from "sonner";
@@ -14,6 +15,7 @@ export default function Producto() {
   const { products } = useProducts();
   const [qty, setQty] = useState(1);
   const product = products.find((p) => p.id === id);
+  const nav = useNavigate();
 
   if (!product) {
     return (
@@ -27,6 +29,14 @@ export default function Producto() {
   const add = () => {
     store.addToCart(product.id, qty);
     toast.success("Agregado al carrito", { description: `${product.title} x${qty}` });
+  };
+  const buyWhatsApp = () => {
+    const text = `Hola Floristería Deluxe 🌷\nQuiero pedir:\n• ${product.title} x${qty} — ${formatCOP(product.price * qty)}\n¿Me ayudas a confirmar?`;
+    window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank");
+  };
+  const buyBold = () => {
+    store.addToCart(product.id, qty);
+    nav("/checkout");
   };
 
   return (
@@ -53,19 +63,29 @@ export default function Producto() {
               )}
             </div>
             <p className="text-muted-foreground leading-relaxed mt-5">{product.description}</p>
-            <div className="mt-7 flex items-center gap-4">
-              <div className="flex items-center border border-border rounded-full">
-                <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center text-burgundy" aria-label="Restar">
-                  <Minus className="w-4 h-4" />
-                </button>
-                <span className="w-8 text-center text-burgundy font-medium">{qty}</span>
-                <button onClick={() => setQty((q) => q + 1)} className="w-10 h-10 flex items-center justify-center text-burgundy" aria-label="Sumar">
-                  <Plus className="w-4 h-4" />
-                </button>
+            <div className="mt-7 space-y-3">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center border border-border rounded-full">
+                  <button onClick={() => setQty((q) => Math.max(1, q - 1))} className="w-10 h-10 flex items-center justify-center text-burgundy" aria-label="Restar">
+                    <Minus className="w-4 h-4" />
+                  </button>
+                  <span className="w-8 text-center text-burgundy font-medium">{qty}</span>
+                  <button onClick={() => setQty((q) => q + 1)} className="w-10 h-10 flex items-center justify-center text-burgundy" aria-label="Sumar">
+                    <Plus className="w-4 h-4" />
+                  </button>
+                </div>
+                <Button onClick={add} variant="outline" className="flex-1 border-burgundy text-burgundy hover:bg-rose-soft h-12 rounded-full">
+                  <ShoppingBag className="w-4 h-4 mr-2" /> Añadir al carrito
+                </Button>
               </div>
-              <Button onClick={add} className="flex-1 bg-burgundy hover:bg-burgundy-light text-primary-foreground h-12 rounded-full">
-                <ShoppingBag className="w-4 h-4 mr-2" /> Añadir al carrito
-              </Button>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                <Button onClick={buyBold} className="bg-burgundy hover:bg-burgundy-light text-primary-foreground h-12 rounded-full">
+                  <CreditCard className="w-4 h-4 mr-2" /> Pagar ahora (Bold)
+                </Button>
+                <Button onClick={buyWhatsApp} className="bg-emerald-500 hover:bg-emerald-600 text-white h-12 rounded-full">
+                  <MessageCircle className="w-4 h-4 mr-2" /> Comprar por WhatsApp
+                </Button>
+              </div>
             </div>
             <div className="mt-8 grid grid-cols-3 gap-3 text-center text-xs">
               <div className="bg-rose-soft rounded-xl py-3 px-2"><p className="text-rose-deep font-semibold">Envío gratis</p><p className="text-muted-foreground mt-0.5">Bquilla / Soledad</p></div>
