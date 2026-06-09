@@ -20,10 +20,19 @@ export function ProductCard({ product }: { product: Product }) {
       >
         <div className="aspect-square overflow-hidden bg-rose-soft relative">
           <img
-            src={product.image}
+            src={product.image || "/placeholder.svg"}
             alt={product.title}
             loading="lazy"
-            className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            onError={(e) => {
+              const img = e.currentTarget;
+              if (img.dataset.fallback !== "1") {
+                img.dataset.fallback = "1";
+                img.src = "/placeholder.svg";
+              }
+            }}
+            className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700 ease-out"
           />
           {product.originalPrice && (
             <span className="absolute top-1.5 left-1.5 bg-burgundy text-primary-foreground text-[9px] md:text-[10px] font-semibold px-1.5 md:px-2 py-0.5 rounded-full">

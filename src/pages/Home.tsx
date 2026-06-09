@@ -20,7 +20,14 @@ export default function Home() {
   const banner = useBanner();
   const { products } = useProducts();
   const images = useSiteImages();
-  const featured = products.filter((p) => p.featured).slice(0, 4);
+  // Destacados: si hay marcados, los usamos; rellenamos hasta 8 con otros productos
+  // para que no quede "un ramito solito" cuando casi ninguno está marcado.
+  const featuredList = (() => {
+    const marked = products.filter((p) => p.featured);
+    if (marked.length >= 8) return marked.slice(0, 8);
+    const rest = products.filter((p) => !p.featured);
+    return [...marked, ...rest].slice(0, 8);
+  })();
   const categories = [
     { name: "Arreglos Florales",     slug: "Arreglos Florales",     img: images.cat_cumple },
     { name: "Fúnebre",               slug: "Fúnebre",               img: images.cat_funebre },
@@ -175,7 +182,7 @@ export default function Home() {
           </div>
         </Reveal>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5">
-          {featured.map((p, i) => (
+          {featuredList.map((p, i) => (
             <Reveal key={p.id} direction="up" delay={i * 0.06}>
               <ProductCard product={p} />
             </Reveal>
