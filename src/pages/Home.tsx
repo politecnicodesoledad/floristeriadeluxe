@@ -22,10 +22,10 @@ export default function Home() {
   const images = useSiteImages();
   const featured = products.filter((p) => p.featured).slice(0, 4);
   const categories = [
-    { name: "Cumpleaños", slug: "Cumpleaños", img: images.cat_cumple },
-    { name: "Bodas",      slug: "Bodas",      img: images.cat_bodas },
-    { name: "Fúnebre",    slug: "Fúnebre",    img: images.cat_funebre },
-    { name: "Desayunos",  slug: "Desayunos",  img: images.cat_desayunos },
+    { name: "Arreglos Florales",     slug: "Arreglos Florales",     img: images.cat_cumple },
+    { name: "Fúnebre",               slug: "Fúnebre",               img: images.cat_funebre },
+    { name: "Desayunos y Anchetas",  slug: "Desayunos y Anchetas",  img: images.cat_desayunos },
+    { name: "Bodas",                 slug: "Bodas",                 img: images.cat_bodas },
   ];
   const bouquetSrc = images.hero_bouquet || heroBouquet;
   const frameSrc   = images.hero_frame   || heroFrame;
@@ -191,7 +191,7 @@ export default function Home() {
               <p className="text-xs uppercase tracking-[0.3em] text-cream/90 mb-3">Mejor que un pastel</p>
               <h3 className="font-serif text-3xl md:text-5xl leading-tight text-cream">{banner.promoTitle}</h3>
               <p className="mt-4 text-cream/90 max-w-md italic">{banner.promoSubtitle}</p>
-              <Link to="/tienda?cat=Cumplea%C3%B1os" className="mt-6">
+              <Link to={`/tienda?cat=${encodeURIComponent("Arreglos Florales")}`} className="mt-6">
                 <Button className="bg-cream text-burgundy hover:bg-background w-fit rounded-full px-8 h-11 tracking-[0.2em] text-xs shadow-soft">
                   EXPLORAR
                 </Button>
