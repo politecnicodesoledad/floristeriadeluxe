@@ -65,6 +65,35 @@ function ProductsTab() {
   const { products } = useProducts();
   const [editing, setEditing] = useState<Product | null>(null);
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [migrating, setMigrating] = useState(false);
+  const [migrateReport, setMigrateReport] = useState<any>(null);
+
+  const runMigration = async (dryRun = false) => {
+    if (!dryRun && !confirm("Esto va a descargar las imágenes desde Google Drive y reemplazar las URLs rotas. ¿Continuar?")) return;
+    setMigrating(true);
+    setMigrateReport(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("migrate-drive-images", {
+        body: { dryRun },
+      });
+      if (error) throw error;
+      setMigrateReport(data);
+      toast.success(
+        dryRun
+          ? `Encontradas ${data?.matched ?? 0} de ${data?.products ?? 0}`
+          : `Migradas ${data?.uploaded ?? 0} imágenes ✨`,
+      );
+      if (!dryRun) {
+        // refrescar productos desde Supabase
+        const { hydrateAll } = await import("@/lib/store");
+        await hydrateAll();
+      }
+    } catch (e: any) {
+      toast.error("Falló la migración", { description: String(e?.message ?? e) });
+    } finally {
+      setMigrating(false);
+    }
+  };
 
   const startNew = () => { setEditing(emptyProduct()); setStep(1); };
   const startEdit = (p: Product) => { setEditing({ ...p }); setStep(1); };
@@ -92,10 +121,35 @@ function ProductsTab() {
       <div className="bg-card border border-border/60 rounded-3xl p-5 md:p-6 shadow-soft">
         <div className="flex items-center justify-between mb-4">
           <h2 className="font-serif text-burgundy text-xl italic">Catálogo ({products.length})</h2>
-          <Button onClick={startNew} className="bg-burgundy hover:bg-burgundy-light text-primary-foreground">
-            <Plus className="w-4 h-4 mr-1" /> Nuevo producto
-          </Button>
+          <div className="flex gap-2 flex-wrap">
+            <Button onClick={() => runMigration(true)} disabled={migrating} variant="outline" className="border-rose-deep text-rose-deep">
+              {migrating ? "Buscando…" : "Probar Drive (dry-run)"}
+            </Button>
+            <Button onClick={() => runMigration(false)} disabled={migrating} variant="outline" className="border-burgundy text-burgundy">
+              {migrating ? "Migrando…" : "Migrar imágenes desde Drive"}
+            </Button>
+            <Button onClick={startNew} className="bg-burgundy hover:bg-burgundy-light text-primary-foreground">
+              <Plus className="w-4 h-4 mr-1" /> Nuevo producto
+            </Button>
+          </div>
         </div>
+        {migrateReport && (
+          <div className="mb-4 p-3 rounded-xl bg-rose-soft/60 border border-rose-mid/30 text-xs text-burgundy">
+            <p className="font-serif text-sm mb-1">Reporte Drive</p>
+            <p>Archivos en Drive: <b>{migrateReport.drive?.fileCount}</b> · Carpetas: <b>{migrateReport.drive?.folderCount}</b></p>
+            <p>Productos a migrar: <b>{migrateReport.products}</b> · Encontrados: <b>{migrateReport.matched}</b> · Subidos: <b>{migrateReport.uploaded}</b></p>
+            <p>No encontrados: <b>{migrateReport.notFoundCount}</b> · Fallidos: <b>{migrateReport.failedCount}</b></p>
+            {migrateReport.notFound?.length > 0 && (
+              <details className="mt-2"><summary className="cursor-pointer">Ver primeros no encontrados</summary>
+                <ul className="mt-1 space-y-0.5">
+                  {migrateReport.notFound.slice(0, 20).map((n: any) => (
+                    <li key={n.id} className="font-mono text-[10px]">{n.basename} — {n.title}</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+        )}
         <div className="grid sm:grid-cols-2 gap-2 max-h-[700px] overflow-y-auto pr-1">
           {products.map((p) => (
             <div key={p.id} className="flex items-center gap-3 bg-rose-soft/60 rounded-xl p-2.5">
