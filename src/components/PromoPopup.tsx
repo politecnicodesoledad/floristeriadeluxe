@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { store } from "@/lib/store";
+import { resolveAssetUrl } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 
 export function PromoPopup() {
@@ -34,7 +35,7 @@ export function PromoPopup() {
   return (
     <Dialog open={open} onOpenChange={(o) => !o && close()}>
       <DialogContent className="bg-cream max-w-md p-0 overflow-hidden">
-        {popup.image && <img src={popup.image} alt="" className="w-full h-44 object-cover" />}
+        {popup.image && <img src={resolveAssetUrl(popup.image)} alt="" className="w-full h-44 object-cover" />}
         <div className="p-6 text-center">
           <h3 className="font-serif text-2xl text-burgundy">{popup.title}</h3>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{popup.message}</p>

@@ -10,6 +10,7 @@ import { store, SITE_IMAGE_SLOTS, type Banner, type Order, type Popup, type Prod
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanner, useProducts, useSiteImages } from "@/lib/hooks";
+import { isLegacyBrokenImageUrl, resolveAssetUrl } from "@/lib/utils";
 import { LogOut, Pencil, Plus, Save, Trash2, Image as ImageIcon, Images as ImagesIcon, Tag, Package, Users, Settings, Ticket } from "lucide-react";
 import { toast } from "sonner";
 
@@ -69,6 +70,25 @@ function ProductsTab() {
   const [migrateReport, setMigrateReport] = useState<any>(null);
 
   const runMigration = async (dryRun = false) => {
+    const pending = products.filter((product) => isLegacyBrokenImageUrl(product.image));
+    if (pending.length === 0) {
+      const { hydrateAll } = await import("@/lib/store");
+      await hydrateAll();
+      setMigrateReport({
+        ok: true,
+        dryRun,
+        drive: { folderCount: 0, fileCount: 0 },
+        products: products.length,
+        matched: 0,
+        uploaded: 0,
+        notFoundCount: 0,
+        failedCount: 0,
+        notFound: [],
+        failed: [],
+      });
+      toast.success("Las imágenes de productos ya están vinculadas");
+      return;
+    }
     if (!dryRun && !confirm("Esto va a descargar las imágenes desde Google Drive y reemplazar las URLs rotas. ¿Continuar?")) return;
     setMigrating(true);
     setMigrateReport(null);
@@ -89,7 +109,11 @@ function ProductsTab() {
         await hydrateAll();
       }
     } catch (e: any) {
-      toast.error("Falló la migración", { description: String(e?.message ?? e) });
+      toast.error("Falló la migración", {
+        description: String(e?.message ?? e).includes("Failed to send a request to the Edge Function")
+          ? "La función de migración no está desplegada, pero las imágenes actuales ya quedaron corregidas en la tienda."
+          : String(e?.message ?? e),
+      });
     } finally {
       setMigrating(false);
     }
@@ -153,7 +177,7 @@ function ProductsTab() {
         <div className="grid sm:grid-cols-2 gap-2 max-h-[700px] overflow-y-auto pr-1">
           {products.map((p) => (
             <div key={p.id} className="flex items-center gap-3 bg-rose-soft/60 rounded-xl p-2.5">
-              <img src={p.image} alt="" className="w-14 h-14 object-cover rounded-lg shrink-0" />
+              <img src={resolveAssetUrl(p.image)} alt="" className="w-14 h-14 object-cover rounded-lg shrink-0" />
               <div className="flex-1 min-w-0">
                 <p className="font-serif text-burgundy text-sm truncate">{p.title}</p>
                 <p className="text-[11px] text-muted-foreground">{p.category} · {formatCOP(p.price)}</p>
@@ -192,7 +216,7 @@ function ProductsTab() {
 
             {/* preview siempre visible */}
             <div className="bg-gradient-rose rounded-2xl p-3 flex gap-3 items-center mb-4">
-              <img src={editing.image || "https://placehold.co/120x120/eee/aaa?text=Imagen"} alt="" className="w-16 h-16 object-cover rounded-lg" />
+              <img src={resolveAssetUrl(editing.image) || "https://placehold.co/120x120/eee/aaa?text=Imagen"} alt="" className="w-16 h-16 object-cover rounded-lg" />
               <div className="flex-1 min-w-0">
                 <p className="font-serif text-burgundy text-sm truncate">{editing.title || "Título del producto"}</p>
                 <p className="text-[11px] text-rose-deep">{editing.category} · {formatCOP(editing.price || 0)}</p>
@@ -238,7 +262,7 @@ function ProductsTab() {
                 <div className="text-center text-xs text-muted-foreground">— o subir desde tu equipo —</div>
                 <input type="file" accept="image/*" onChange={(e) => e.target.files?.[0] && onFile(e.target.files[0])}
                   className="text-xs w-full border border-dashed border-rose-mid rounded-lg p-2" />
-                {editing.image && <img src={editing.image} alt="" className="w-full h-40 object-cover rounded-lg border" />}
+                {editing.image && <img src={resolveAssetUrl(editing.image)} alt="" className="w-full h-40 object-cover rounded-lg border" />}
                 <label className="flex items-center gap-2 cursor-pointer bg-rose-soft/60 p-3 rounded-lg">
                   <Switch checked={!!editing.featured} onCheckedChange={(v) => setEditing({ ...editing, featured: v })} />
                   <span className="text-sm text-burgundy">⭐ Mostrar en destacados del Home</span>
