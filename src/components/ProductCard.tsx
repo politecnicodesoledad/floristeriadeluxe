@@ -2,6 +2,7 @@ import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import { Plus } from "lucide-react";
 import { formatCOP, store, type Product } from "@/lib/store";
+import { resolveAssetUrl } from "@/lib/utils";
 import { toast } from "sonner";
 
 export function ProductCard({ product }: { product: Product }) {
@@ -20,7 +21,7 @@ export function ProductCard({ product }: { product: Product }) {
       >
         <div className="aspect-square overflow-hidden bg-rose-soft relative">
           <img
-            src={product.image || "/placeholder.svg"}
+            src={resolveAssetUrl(product.image) || "/placeholder.svg"}
             alt={product.title}
             loading="lazy"
             decoding="async"

@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { CreditCard, Minus, Plus, ShoppingBag, Trash2 } from "lucide-react";
 import { useCart, useProducts } from "@/lib/hooks";
 import { formatCOP, store } from "@/lib/store";
+import { resolveAssetUrl } from "@/lib/utils";
 import { Link, useNavigate } from "react-router-dom";
 
 export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
@@ -55,7 +56,7 @@ export function CartDrawer({ open, onOpenChange }: { open: boolean; onOpenChange
               <ul className="space-y-4">
                 {lines.map((l) => (
                   <li key={l.productId} className="flex gap-3 pb-4 border-b border-border/60 last:border-0">
-                    <img src={l.product.image} alt="" className="w-20 h-20 rounded-lg object-cover" />
+                    <img src={resolveAssetUrl(l.product.image)} alt="" className="w-20 h-20 rounded-lg object-cover" />
                     <div className="flex-1 min-w-0">
                       <p className="font-serif text-burgundy text-sm leading-tight line-clamp-2">{l.product.title}</p>
                       <p className="text-xs text-muted-foreground mt-0.5">{formatCOP(l.product.price)}</p>
