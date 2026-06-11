@@ -8,6 +8,7 @@ import { formatCOP, store, WHATSAPP_NUMBER } from "@/lib/store";
 import { useNavigate } from "react-router-dom";
 import { ProductCard } from "@/components/ProductCard";
 import { Reveal } from "@/components/Reveal";
+import { resolveAssetUrl } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function Producto() {
@@ -50,7 +51,7 @@ export default function Producto() {
         <div className="grid md:grid-cols-2 gap-8 md:gap-12 mt-6">
           <Reveal direction="left">
             <div className="rounded-3xl overflow-hidden bg-rose-soft shadow-luxe">
-              <img src={product.image} alt={product.title} className="w-full aspect-square object-cover" />
+              <img src={resolveAssetUrl(product.image)} alt={product.title} className="w-full aspect-square object-cover" />
             </div>
           </Reveal>
           <Reveal direction="right">
