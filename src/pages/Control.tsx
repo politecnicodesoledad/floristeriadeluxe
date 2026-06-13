@@ -6,12 +6,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { store, SITE_IMAGE_SLOTS, type Banner, type Order, type Popup, type Product, type SiteImages, formatCOP } from "@/lib/store";
+import { store, SITE_IMAGE_SLOTS, type Banner, type Order, type Popup, type Product, type SiteImages, type DeliveryZone, formatCOP } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanner, useProducts, useSiteImages } from "@/lib/hooks";
 import { isLegacyBrokenImageUrl, resolveAssetUrl } from "@/lib/utils";
-import { LogOut, Pencil, Plus, Save, Trash2, Image as ImageIcon, Images as ImagesIcon, Tag, Package, Users, Settings, Ticket } from "lucide-react";
+import { LogOut, Pencil, Plus, Save, Trash2, Image as ImageIcon, Images as ImagesIcon, Tag, Package, Users, Settings, Ticket, Truck } from "lucide-react";
 import { toast } from "sonner";
 
 const CATS = ["Cumpleaños", "Bodas", "Fúnebre", "Desayunos"];
@@ -39,6 +39,7 @@ export default function Control() {
             <TabsTrigger value="products"><Package className="w-3.5 h-3.5 mr-1" />Productos</TabsTrigger>
             <TabsTrigger value="orders"><Tag className="w-3.5 h-3.5 mr-1" />Pedidos</TabsTrigger>
             <TabsTrigger value="coupons"><Ticket className="w-3.5 h-3.5 mr-1" />Cupones</TabsTrigger>
+            <TabsTrigger value="zones"><Truck className="w-3.5 h-3.5 mr-1" />Zonas</TabsTrigger>
             <TabsTrigger value="content"><ImageIcon className="w-3.5 h-3.5 mr-1" />Contenido</TabsTrigger>
             <TabsTrigger value="gallery"><ImagesIcon className="w-3.5 h-3.5 mr-1" />Galería</TabsTrigger>
             <TabsTrigger value="clients"><Users className="w-3.5 h-3.5 mr-1" />Clientes</TabsTrigger>
@@ -47,6 +48,7 @@ export default function Control() {
           <TabsContent value="products" className="mt-6"><ProductsTab /></TabsContent>
           <TabsContent value="orders"   className="mt-6"><OrdersTab /></TabsContent>
           <TabsContent value="coupons"  className="mt-6"><CouponsTab /></TabsContent>
+          <TabsContent value="zones"    className="mt-6"><ZonesTab /></TabsContent>
           <TabsContent value="content"  className="mt-6"><BannersTab /></TabsContent>
           <TabsContent value="gallery"  className="mt-6"><GalleryTab /></TabsContent>
           <TabsContent value="clients"  className="mt-6"><ClientsTab /></TabsContent>
@@ -303,27 +305,195 @@ function OrdersTab() {
       <h2 className="font-serif text-burgundy text-xl italic mb-4">Pedidos ({orders.length})</h2>
       <ul className="divide-y divide-border/60">
         {orders.map((o) => (
-          <li key={o.code} className="py-4 grid md:grid-cols-[1fr_auto] gap-3 md:items-center">
-            <div>
-              <div className="flex items-center gap-2 flex-wrap">
-                <p className="font-serif text-burgundy text-lg">{o.code}</p>
-                {o.payment_method === "bold" && <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded">Bold</span>}
-                {o.payment_status === "paid" && <span className="text-[10px] bg-emerald-100 text-emerald-700 px-1.5 py-0.5 rounded">Pagado</span>}
+          <li key={o.code} className="py-4 space-y-2">
+            <div className="grid md:grid-cols-[1fr_auto] gap-3 md:items-start">
+              <div>
+                {/* Encabezado con código y badges */}
+                <div className="flex items-center gap-2 flex-wrap">
+                  <p className="font-serif text-burgundy text-lg">{o.code}</p>
+                  {o.payment_method === "bold" && (
+                    <span className="text-[10px] bg-blue-100 text-blue-700 px-2 py-0.5 rounded-full font-medium">💳 Bold</span>
+                  )}
+                  {o.payment_method === "whatsapp" && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">💬 WhatsApp</span>
+                  )}
+                  {o.payment_status === "paid" && (
+                    <span className="text-[10px] bg-emerald-100 text-emerald-700 px-2 py-0.5 rounded-full font-medium">✓ Pagado</span>
+                  )}
+                  {o.payment_status === "pending" && (
+                    <span className="text-[10px] bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-medium">⏳ Pendiente</span>
+                  )}
+                </div>
+
+                {/* Fecha, cliente, total */}
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  {new Date(o.createdAt).toLocaleString("es-CO")} · {formatCOP(o.total)}
+                  {o.customer?.name && ` · ${o.customer.name}`}
+                  {o.customer?.phone && ` · ${o.customer.phone}`}
+                </p>
+
+                {/* Productos con links */}
+                <div className="mt-1.5 space-y-0.5">
+                  {o.items.map((item, idx) => (
+                    <div key={idx} className="flex items-center gap-2 text-xs text-foreground/70">
+                      <span>{item.title} ×{item.qty} — {formatCOP(item.price * item.qty)}</span>
+                      {item.productUrl && (
+                        <a
+                          href={item.productUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-burgundy underline hover:text-rose-deep shrink-0"
+                        >
+                          ver producto →
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Datos de envío */}
+                {(o.recipient_name || o.delivery_date || o.delivery_zone) && (
+                  <div className="mt-2 p-2.5 bg-rose-soft/50 rounded-xl text-xs space-y-0.5 text-foreground/70">
+                    {o.sender_name && <p>👤 <span className="font-medium">De:</span> {o.sender_name}</p>}
+                    {o.recipient_name && <p>🎁 <span className="font-medium">Para:</span> {o.recipient_name}</p>}
+                    {o.delivery_date && (
+                      <p>📅 <span className="font-medium">Entrega:</span> {new Date(o.delivery_date + "T12:00:00").toLocaleDateString("es-CO", { weekday: "long", day: "numeric", month: "long" })}
+                        {o.delivery_time && ` · ${o.delivery_time === "8-13" ? "8 am – 1 pm" : "2 pm – 6 pm"}`}
+                      </p>
+                    )}
+                    {o.delivery_zone && (
+                      <p>📍 <span className="font-medium">Zona:</span> {o.delivery_zone}
+                        {o.delivery_cost ? ` — ${formatCOP(o.delivery_cost)}` : ""}
+                      </p>
+                    )}
+                    {(o.shipping_address as any)?.address && (
+                      <p>🏠 <span className="font-medium">Dirección:</span> {(o.shipping_address as any).address}</p>
+                    )}
+                    {o.dedicatoria && <p>💌 <span className="font-medium">Dedicatoria:</span> {o.dedicatoria}</p>}
+                  </div>
+                )}
               </div>
-              <p className="text-xs text-muted-foreground">
-                {new Date(o.createdAt).toLocaleString("es-CO")} · {o.items.length} ítems · {formatCOP(o.total)}
-                {o.customer?.name && ` · ${o.customer.name}`}
-                {o.customer?.phone && ` · ${o.customer.phone}`}
-              </p>
-              <p className="text-xs text-foreground/70 mt-1 line-clamp-2">{o.items.map((i) => `${i.title} ×${i.qty}`).join(" · ")}</p>
+
+              <Select value={o.status} onValueChange={(v) => change(o.code, v as Order["status"])}>
+                <SelectTrigger className="w-full md:w-48"><SelectValue /></SelectTrigger>
+                <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+              </Select>
             </div>
-            <Select value={o.status} onValueChange={(v) => change(o.code, v as Order["status"])}>
-              <SelectTrigger className="w-full md:w-48"><SelectValue /></SelectTrigger>
-              <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-            </Select>
           </li>
         ))}
       </ul>
+    </div>
+  );
+}
+
+/* ============ ZONAS DE ENVÍO ============ */
+function ZonesTab() {
+  const [zones, setZones] = useState<DeliveryZone[]>([]);
+  const [draft, setDraft] = useState({ name: "", price: 0 });
+
+  useEffect(() => {
+    store.fetchDeliveryZones().then(setZones);
+  }, []);
+
+  const save = (updated: DeliveryZone[]) => {
+    setZones(updated);
+    store.saveDeliveryZones(updated);
+    toast.success("Zonas de envío guardadas ✨");
+  };
+
+  const add = () => {
+    if (!draft.name.trim()) return toast.error("Escribe el nombre de la zona");
+    if (draft.price < 0) return toast.error("El precio no puede ser negativo");
+    const newZone: DeliveryZone = {
+      id: `zone_${Date.now()}`,
+      name: draft.name.trim(),
+      price: draft.price,
+      active: true,
+    };
+    save([...zones, newZone]);
+    setDraft({ name: "", price: 0 });
+  };
+
+  const toggle = (id: string) => {
+    save(zones.map((z) => z.id === id ? { ...z, active: !z.active } : z));
+  };
+
+  const remove = (id: string) => {
+    if (!confirm("¿Eliminar esta zona?")) return;
+    save(zones.filter((z) => z.id !== id));
+  };
+
+  const updatePrice = (id: string, price: number) => {
+    save(zones.map((z) => z.id === id ? { ...z, price } : z));
+  };
+
+  return (
+    <div className="grid lg:grid-cols-[1fr_360px] gap-6">
+      {/* Lista de zonas */}
+      <div className="bg-card border border-border/60 rounded-3xl p-5 md:p-6 shadow-soft">
+        <h2 className="font-serif text-burgundy text-xl italic mb-1">Zonas configuradas ({zones.length})</h2>
+        <p className="text-xs text-muted-foreground mb-4">El cliente verá estas zonas al finalizar la compra. Activa o desactiva según disponibilidad.</p>
+
+        {zones.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic py-4">Aún no hay zonas. Agrégalas →</p>
+        ) : (
+          <ul className="divide-y divide-border/60">
+            {zones.map((z) => (
+              <li key={z.id} className="py-3 flex items-center gap-3 flex-wrap">
+                <div className="flex-1 min-w-0">
+                  <p className={`font-medium ${z.active ? "text-foreground" : "text-muted-foreground line-through"}`}>{z.name}</p>
+                </div>
+                <div className="flex items-center gap-1">
+                  <span className="text-xs text-muted-foreground">$</span>
+                  <Input
+                    type="number"
+                    className="w-28 h-8 text-sm"
+                    value={z.price}
+                    min={0}
+                    onChange={(e) => updatePrice(z.id, Number(e.target.value))}
+                    onBlur={(e) => updatePrice(z.id, Number(e.target.value))}
+                  />
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={z.active} onCheckedChange={() => toggle(z.id)} />
+                  <button onClick={() => remove(z.id)} className="text-destructive hover:text-red-700">
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+
+      {/* Agregar zona */}
+      <div className="bg-card border border-border/60 rounded-3xl p-5 md:p-6 shadow-soft self-start">
+        <h2 className="font-serif text-burgundy text-xl italic mb-4">Agregar zona</h2>
+        <div className="space-y-3">
+          <Input
+            placeholder="Nombre (ej: Barranquilla Centro)"
+            value={draft.name}
+            onChange={(e) => setDraft({ ...draft, name: e.target.value })}
+          />
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-muted-foreground shrink-0">Tarifa $</span>
+            <Input
+              type="number"
+              placeholder="0"
+              min={0}
+              value={draft.price || ""}
+              onChange={(e) => setDraft({ ...draft, price: Number(e.target.value) })}
+            />
+          </div>
+          <Button onClick={add} className="w-full bg-burgundy hover:bg-burgundy-light text-primary-foreground">
+            <Plus className="w-4 h-4 mr-2" /> Agregar zona
+          </Button>
+        </div>
+        <div className="mt-5 p-3 bg-amber-50 border border-amber-200 rounded-xl text-xs text-amber-800">
+          <p className="font-semibold mb-1">💡 Zona "Otro"</p>
+          <p>Siempre habrá una opción "Otro" automática para zonas no listadas. El cliente indicará su zona y tú la confirmas por WhatsApp antes de despachar.</p>
+        </div>
+      </div>
     </div>
   );
 }
