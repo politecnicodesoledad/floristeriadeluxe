@@ -18,10 +18,17 @@ export type Product = {
 
 export type CartItem = { productId: string; qty: number };
 
+export type DeliveryZone = {
+  id: string;
+  name: string;
+  price: number;
+  active: boolean;
+};
+
 export type Order = {
   code: string;
   user_id?: string | null;
-  items: { productId: string; title: string; qty: number; price: number }[];
+  items: { productId: string; title: string; qty: number; price: number; productUrl?: string }[];
   total: number;
   subtotal?: number;
   discount?: number;
@@ -29,6 +36,13 @@ export type Order = {
   dedicatoria?: string;
   customer?: { name?: string; phone?: string; address?: string };
   shipping_address?: Record<string, unknown> | null;
+  // Nuevos campos de envío
+  sender_name?: string;          // De (opcional)
+  recipient_name?: string;       // Para
+  delivery_date?: string;        // Fecha de entrega (ISO date)
+  delivery_time?: "8-13" | "14-18"; // Franja horaria
+  delivery_zone?: string;        // Nombre de zona elegida
+  delivery_cost?: number;        // Tarifa de esa zona
   payment_method?: "whatsapp" | "bold";
   payment_status?: "pending" | "paid" | "failed";
   status: "Recibido" | "En preparación" | "En camino" | "Entregado";
@@ -91,6 +105,7 @@ const KEYS = {
   popup: "fdx.popup",
   popupSeen: "fdx.popup.seen",
   images: "fdx.images",
+  delivery_zones: "fdx.delivery_zones",
 } as const;
 
 const isBrowser = () => typeof window !== "undefined";
@@ -302,6 +317,12 @@ export const store = {
         dedicatoria: full.dedicatoria ?? null,
         customer: full.customer ?? null,
         shipping_address: full.shipping_address ?? null,
+        sender_name: full.sender_name ?? null,
+        recipient_name: full.recipient_name ?? null,
+        delivery_date: full.delivery_date ?? null,
+        delivery_time: full.delivery_time ?? null,
+        delivery_zone: full.delivery_zone ?? null,
+        delivery_cost: full.delivery_cost ?? 0,
         payment_method: full.payment_method ?? "whatsapp",
         payment_status: full.payment_status ?? "pending",
         status: full.status,
@@ -396,6 +417,29 @@ export const store = {
         .then(({ error }) => logErr("saveSiteImages", error));
     }
   },
+
+  // Delivery zones
+  getDeliveryZones(): DeliveryZone[] {
+    return read<DeliveryZone[]>(KEYS.delivery_zones, []);
+  },
+  saveDeliveryZones(zones: DeliveryZone[]) {
+    write(KEYS.delivery_zones, zones);
+    if (SUPABASE_READY) {
+      supabase.from("site_settings").upsert({ key: "delivery_zones", value: zones, updated_at: new Date().toISOString() })
+        .then(({ error }) => logErr("saveDeliveryZones", error));
+    }
+  },
+  async fetchDeliveryZones(): Promise<DeliveryZone[]> {
+    if (SUPABASE_READY) {
+      const { data } = await supabase.from("site_settings").select("value").eq("key", "delivery_zones").maybeSingle();
+      if (data?.value) {
+        const zones = data.value as DeliveryZone[];
+        write(KEYS.delivery_zones, zones);
+        return zones;
+      }
+    }
+    return store.getDeliveryZones();
+  },
 };
 
 function rowToOrder(d: any): Order {
@@ -410,6 +454,12 @@ function rowToOrder(d: any): Order {
     dedicatoria: d.dedicatoria ?? undefined,
     customer: d.customer ?? undefined,
     shipping_address: d.shipping_address ?? null,
+    sender_name: d.sender_name ?? undefined,
+    recipient_name: d.recipient_name ?? undefined,
+    delivery_date: d.delivery_date ?? undefined,
+    delivery_time: d.delivery_time ?? undefined,
+    delivery_zone: d.delivery_zone ?? undefined,
+    delivery_cost: d.delivery_cost ?? 0,
     payment_method: d.payment_method ?? "whatsapp",
     payment_status: d.payment_status ?? "pending",
     status: d.status,
@@ -460,6 +510,7 @@ async function hydrateSettings() {
   const banner = data.find((x: any) => x.key === "banner")?.value as Banner | undefined;
   const popup  = data.find((x: any) => x.key === "popup")?.value  as Popup  | undefined;
   const images = data.find((x: any) => x.key === "site_images")?.value as SiteImages | undefined;
+  const zones  = data.find((x: any) => x.key === "delivery_zones")?.value as DeliveryZone[] | undefined;
   if (banner) write(KEYS.banner, banner);
   else if (SUPABASE_READY) {
     await supabase.from("site_settings").upsert({ key: "banner", value: DEFAULT_BANNER });
@@ -469,6 +520,7 @@ async function hydrateSettings() {
     await supabase.from("site_settings").upsert({ key: "popup", value: DEFAULT_POPUP });
   }
   if (images) write(KEYS.images, images);
+  if (zones) write(KEYS.delivery_zones, zones);
 }
 
 export function generateTrackingCode(): string {
