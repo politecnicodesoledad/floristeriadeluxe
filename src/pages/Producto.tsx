@@ -32,7 +32,8 @@ export default function Producto() {
     toast.success("Agregado al carrito", { description: `${product.title} x${qty}` });
   };
   const buyWhatsApp = () => {
-    const text = `Hola Floristería Deluxe 🌷\nQuiero pedir:\n• ${product.title} x${qty} — ${formatCOP(product.price * qty)}\n¿Me ayudas a confirmar?`;
+    const productLink = `${window.location.origin}/producto/${product.id}`;
+    const text = `Hola Floristería Deluxe 🌷\nQuiero pedir:\n• ${product.title} x${qty} — ${formatCOP(product.price * qty)}\n🔗 ${productLink}\n\n¿Me ayudas a confirmar?`;
     window.open(`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`, "_blank");
   };
   const buyBold = () => {
