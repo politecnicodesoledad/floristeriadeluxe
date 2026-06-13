@@ -170,76 +170,80 @@ export default function Checkout() {
   const payBold = async () => {
     if (!validate()) return;
     setLoading("bold");
+
     const order = buildOrder();
-    await store.addOrder({ ...order, payment_method: "bold", payment_status: "pending" });
-    setBoldStartedAt(Date.now());
 
     try {
-      // Integración real Bold — crear preferencia de pago
-      const boldPayload = {
-        orderId: order.code,
-        currency: "COP",
-        amount: {
-          subtotal: total,
-          taxes: [],
-          tip: 0,
-        },
-        customer: { fullName: name, email: email || `cliente@floristeriadeluxe.co`, phone },
-        payment: {
-          allowedPaymentMethods: ["CARD", "NEQUI", "PSE", "BANCOLOMBIA_TRANSFER"],
-        },
-        redirectionUrl: `${window.location.origin}/mi-cuenta?tab=orders`,
-        signature: {
-          algorithm: "sha256",
-          deviceFingerprint: navigator.userAgent.slice(0, 50),
-        },
-      };
-
-      const res = await fetch("https://checkout.bold.co/api/payment_intent", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `x-api-key ${BOLD_API_KEY}`,
-        },
-        body: JSON.stringify(boldPayload),
-      });
-
-      if (res.ok) {
-        const data = await res.json();
-        const url = data?.payment_link || data?.url || data?.checkout_url;
-        if (url) {
-          store.clearCart();
-          window.location.href = url;
-          return;
-        }
-      }
-
-      // Si la API directa falla, intentar la edge function de Supabase
-      const { data: fnData, error: fnError } = await supabase.functions.invoke("bold-sign", {
+      // 1. Pedir firma a la edge function (server-side con la llave secreta)
+      const { data: boldData, error: fnError } = await supabase.functions.invoke("bold-sign", {
         body: {
           orderId: order.code,
           amount: total,
           currency: "COP",
-          description: `Pedido ${order.code}`,
+          description: `Pedido ${order.code} — Floristería Deluxe`,
           customer: { name, email, phone },
-          apiKey: BOLD_API_KEY,
         },
       });
 
-      if (!fnError && fnData?.url) {
-        store.clearCart();
-        window.location.href = fnData.url;
-        return;
+      if (fnError || !boldData?.integritySignature) {
+        throw new Error(fnError?.message || "No se pudo generar la firma Bold");
       }
 
-      throw new Error("No se pudo generar el link de pago Bold");
-    } catch (e: any) {
+      // 2. Guardar pedido en BD con payment_method bold
+      await store.addOrder({ ...order, payment_method: "bold", payment_status: "pending" });
+      store.clearCart();
+
+      // 3. Montar y disparar el botón Bold dinámicamente
+      // Bold funciona inyectando su script con data-attributes
+      const container = document.getElementById("bold-button-container");
+      if (!container) throw new Error("Contenedor Bold no encontrado");
+
+      container.innerHTML = ""; // limpiar
+
+      const btn = document.createElement("div");
+      btn.setAttribute("data-bold-button", "");
+      btn.setAttribute("data-order-id", boldData.orderId);
+      btn.setAttribute("data-currency", boldData.currency);
+      btn.setAttribute("data-amount", String(boldData.amount));
+      btn.setAttribute("data-api-key", BOLD_API_KEY);
+      btn.setAttribute("data-integrity-signature", boldData.integritySignature);
+      btn.setAttribute("data-description", boldData.description);
+      btn.setAttribute("data-redirection-url", boldData.redirectionUrl);
+      container.appendChild(btn);
+
+      // Cargar/recargar el script de Bold
+      const existing = document.getElementById("bold-script");
+      if (existing) existing.remove();
+
+      const script = document.createElement("script");
+      script.id = "bold-script";
+      script.src = "https://checkout.bold.co/library/boldPaymentButton.js";
+      script.onload = () => {
+        // Bold renderiza automáticamente y abre su checkout
+        // Esperamos un momento y simulamos click si lo tiene
+        setTimeout(() => {
+          const boldBtn = container.querySelector("button, a, [role='button']") as HTMLElement;
+          if (boldBtn) {
+            boldBtn.click();
+          } else {
+            // Bold puede redirigir directamente
+            setLoading(null);
+          }
+        }, 800);
+      };
+      script.onerror = () => {
+        throw new Error("No se pudo cargar el script de Bold");
+      };
+      document.body.appendChild(script);
+      setBoldStartedAt(Date.now());
       setLoading(null);
-      toast.error("Pago Bold no disponible en este momento", {
-        description: "Te llevaremos a completarlo por WhatsApp.",
-        duration: 5000,
+
+    } catch (e: any) {
+      console.error("Bold error:", e);
+      setLoading(null);
+      toast.error("No se pudo iniciar el pago con Bold", {
+        description: "Intenta de nuevo o completa el pedido por WhatsApp.",
       });
-      setTimeout(payWhatsApp, 1500);
     }
   };
 
@@ -440,6 +444,8 @@ export default function Checkout() {
         </div>
       </section>
       <BoldPaymentDialog startedAt={boldStartedAt} onClose={() => setBoldStartedAt(null)} />
+      {/* Contenedor oculto donde Bold monta su botón dinámicamente */}
+      <div id="bold-button-container" className="hidden" aria-hidden="true" />
     </>
   );
 }
