@@ -297,6 +297,12 @@ function OrdersTab() {
     toast.success(`Estado: ${status}`);
   };
 
+  const markPaid = async (code: string) => {
+    await store.updatePaymentStatus(code, "paid");
+    setOrders((prev) => prev.map((o) => o.code === code ? { ...o, payment_status: "paid" } : o));
+    toast.success("Marcado como pagado ✓");
+  };
+
   if (loading) return <p className="text-center text-muted-foreground py-12 italic">Cargando pedidos…</p>;
   if (orders.length === 0) return <p className="text-center text-muted-foreground py-12 italic">Aún no hay pedidos registrados.</p>;
 
@@ -374,10 +380,20 @@ function OrdersTab() {
                 )}
               </div>
 
-              <Select value={o.status} onValueChange={(v) => change(o.code, v as Order["status"])}>
-                <SelectTrigger className="w-full md:w-48"><SelectValue /></SelectTrigger>
-                <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-              </Select>
+              <div className="flex flex-col gap-2 md:items-end">
+                <Select value={o.status} onValueChange={(v) => change(o.code, v as Order["status"])}>
+                  <SelectTrigger className="w-full md:w-48"><SelectValue /></SelectTrigger>
+                  <SelectContent>{STATUSES.map((s) => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                </Select>
+                {o.payment_status !== "paid" && (
+                  <button
+                    onClick={() => markPaid(o.code)}
+                    className="text-xs text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 rounded-full px-3 py-1.5 font-medium w-full md:w-48 transition-colors"
+                  >
+                    ✓ Marcar como pagado
+                  </button>
+                )}
+              </div>
             </div>
           </li>
         ))}
