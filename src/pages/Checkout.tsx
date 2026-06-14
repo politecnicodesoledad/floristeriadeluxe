@@ -12,8 +12,6 @@ import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { CreditCard, MessageCircle, Tag, Loader2, MapPin, Calendar, Clock, User, Gift } from "lucide-react";
 
-const BOLD_API_KEY = "dMTrm3xHSPLuQmfltK6sVp9IeH__xGJbPgWog0dOETY";
-
 export default function Checkout() {
   const { items } = useCart();
   const { products } = useProducts();
@@ -172,7 +170,7 @@ export default function Checkout() {
     const order = buildOrder();
 
     try {
-      // 1. Pedir firma a la edge function (server-side con la llave secreta)
+      // Pedir a la edge function que cree el link de pago en Bold
       const { data: boldData, error: fnError } = await supabase.functions.invoke("bold-sign", {
         body: {
           orderId: order.code,
@@ -183,37 +181,21 @@ export default function Checkout() {
         },
       });
 
-      if (fnError || !boldData?.integritySignature) {
+      if (fnError || !boldData?.url) {
         console.error("Bold edge function error:", fnError, "data:", boldData);
-        throw new Error(fnError?.message || boldData?.error || "No se pudo generar la firma Bold");
+        throw new Error(fnError?.message || boldData?.error || "No se pudo generar el link de pago");
       }
 
-      // 2. Guardar pedido en BD con payment_method bold (aún NO vaciar el carrito)
+      // Guardar pedido y redirigir al link de pago de Bold
       await store.addOrder({ ...order, payment_method: "bold", payment_status: "pending" });
-
-      // 3. Construir el link de checkout de Bold directamente y redirigir
-      // Doc: https://developers.bold.co/pagos-en-linea/boton-de-pagos
-      const params = new URLSearchParams({
-        "api-key": BOLD_API_KEY,
-        amount: String(boldData.amount),
-        currency: boldData.currency,
-        "order-id": boldData.orderId,
-        description: boldData.description,
-        "integrity-signature": boldData.integritySignature,
-        "redirection-url": boldData.redirectionUrl,
-      });
-
-      const boldUrl = `https://checkout.bold.co/payment?${params.toString()}`;
-
-      // Solo vaciar el carrito cuando ya vamos a salir hacia Bold
       store.clearCart();
-      window.location.href = boldUrl;
+      window.location.href = boldData.url;
 
     } catch (e: any) {
       console.error("Bold error:", e);
       setLoading(null);
-      toast.error("No se pudo iniciar el pago con Bold", {
-        description: e?.message?.includes("Faltan")
+      toast.error("No se pudo iniciar el pago en línea", {
+        description: e?.message?.includes("Falta")
           ? "Falta configuración en el servidor. Contacta al administrador."
           : "Intenta de nuevo o completa el pedido por WhatsApp.",
         duration: 6000,
