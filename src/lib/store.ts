@@ -341,6 +341,15 @@ export const store = {
       supabase.from("orders").update({ status }).eq("code", code).then(({ error }) => logErr("updateOrderStatus", error));
     }
   },
+  updatePaymentStatus(code: string, payment_status: Order["payment_status"]) {
+    write(
+      KEYS.orders,
+      store.getOrders().map((o) => (o.code === code ? { ...o, payment_status } : o)),
+    );
+    if (SUPABASE_READY) {
+      supabase.from("orders").update({ payment_status }).eq("code", code).then(({ error }) => logErr("updatePaymentStatus", error));
+    }
+  },
   async fetchUserOrders(userId: string): Promise<Order[]> {
     const { data, error } = await supabase
       .from("orders").select("*").eq("user_id", userId)
