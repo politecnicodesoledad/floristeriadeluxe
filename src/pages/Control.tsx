@@ -303,6 +303,13 @@ function OrdersTab() {
     toast.success("Marcado como pagado ✓");
   };
 
+  const removeOrder = async (code: string) => {
+    if (!confirm(`¿Eliminar el pedido ${code}? Esta acción no se puede deshacer.`)) return;
+    await store.deleteOrder(code);
+    setOrders((prev) => prev.filter((o) => o.code !== code));
+    toast.success(`Pedido ${code} eliminado`);
+  };
+
   if (loading) return <p className="text-center text-muted-foreground py-12 italic">Cargando pedidos…</p>;
   if (orders.length === 0) return <p className="text-center text-muted-foreground py-12 italic">Aún no hay pedidos registrados.</p>;
 
@@ -393,6 +400,12 @@ function OrdersTab() {
                     ✓ Marcar como pagado
                   </button>
                 )}
+                <button
+                  onClick={() => removeOrder(o.code)}
+                  className="text-xs text-destructive bg-destructive/5 hover:bg-destructive/10 border border-destructive/20 rounded-full px-3 py-1.5 font-medium w-full md:w-48 transition-colors flex items-center justify-center gap-1.5"
+                >
+                  <Trash2 className="w-3.5 h-3.5" /> Eliminar pedido
+                </button>
               </div>
             </div>
           </li>
