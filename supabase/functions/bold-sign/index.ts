@@ -1,13 +1,16 @@
-// Bold "Botón de Pagos" — generador de hash de integridad.
+// Bold — API de Links de Pago.
 // Despliega con:  supabase functions deploy bold-sign
-// Variables de entorno requeridas (Supabase → Project Settings → Edge Functions → Secrets):
-//   BOLD_IDENTITY_KEY   = llave de identidad (pública) de Bold
-//   BOLD_SECRET_KEY     = llave secreta de Bold (NUNCA en el frontend)
-//   PUBLIC_SITE_URL     = ej. https://floristeriadeluxe.com
 //
-// Doc: https://developers.bold.co/pagos-en-linea/boton-de-pagos
+// Variables de entorno (Supabase → Project Settings → Edge Functions → Secrets):
+//   BOLD_IDENTITY_KEY  = dMTrm3xHSPLuQmfltK6sVp9IeH__xGJbPgWog0dOETY
+//   PUBLIC_SITE_URL    = https://floristeriadeluxe.com  (o tu dominio)
+//
+// Doc: https://developers.bold.co/pagos-en-linea/api-link-de-pagos
 
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+const CORS = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
 
 interface Body {
   orderId: string;
@@ -17,49 +20,74 @@ interface Body {
   customer?: { name?: string; email?: string; phone?: string };
 }
 
-async function sha256Hex(input: string): Promise<string> {
-  const data = new TextEncoder().encode(input);
-  const hash = await crypto.subtle.digest("SHA-256", data);
-  return Array.from(new Uint8Array(hash)).map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
 Deno.serve(async (req) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method === "OPTIONS") return new Response("ok", { headers: CORS });
 
   try {
     const IDENTITY = Deno.env.get("BOLD_IDENTITY_KEY");
-    const SECRET = Deno.env.get("BOLD_SECRET_KEY");
-    const SITE = Deno.env.get("PUBLIC_SITE_URL") ?? "";
-    if (!IDENTITY || !SECRET) {
-      return new Response(JSON.stringify({ error: "BOLD_IDENTITY_KEY / BOLD_SECRET_KEY no configuradas" }),
-        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    const SITE = Deno.env.get("PUBLIC_SITE_URL") ?? "https://floristeriadeluxe.com";
+
+    if (!IDENTITY) {
+      return json({ error: "Falta BOLD_IDENTITY_KEY en los secrets de Supabase" }, 500);
     }
 
     const body = (await req.json()) as Body;
+
     if (!body.orderId || !body.amount || body.amount <= 0) {
-      return new Response(JSON.stringify({ error: "orderId y amount requeridos" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      return json({ error: "orderId y amount son requeridos" }, 400);
     }
+
     const currency = body.currency ?? "COP";
+    const description = (body.description ?? `Pedido ${body.orderId}`).slice(0, 100);
 
-    // Bold checkout: integritySignature = SHA256(orderId + amount + currency + secretKey)
-    const integritySignature = await sha256Hex(`${body.orderId}${body.amount}${currency}${SECRET}`);
+    const payload = {
+      amount_type: "CLOSE",
+      amount: {
+        currency,
+        total_amount: body.amount,
+        tip_amount: 0,
+      },
+      reference: `${body.orderId}-${Date.now()}`.slice(0, 60),
+      description,
+      callback_url: `${SITE}/mi-cuenta?tab=orders&order=${body.orderId}`,
+      ...(body.customer?.email ? { payer_email: body.customer.email } : {}),
+    };
 
-    // Devolvemos los parámetros para que el frontend monte el botón Bold o navegue al checkout hospedado.
-    // Si prefieres redireccionar, monta el HTML con los data-attributes oficiales y devuelve la URL.
-    return new Response(JSON.stringify({
-      identityKey: IDENTITY,
+    const res = await fetch("https://integrations.api.bold.co/online/link/v1", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `x-api-key ${IDENTITY}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok || data?.errors?.length) {
+      return json({ error: "Bold rechazó la solicitud", details: data }, 502);
+    }
+
+    const url = data?.payload?.url;
+    if (!url) {
+      return json({ error: "Bold no devolvió un link de pago", details: data }, 502);
+    }
+
+    return json({
       orderId: body.orderId,
       amount: body.amount,
       currency,
-      integritySignature,
-      description: body.description ?? `Pedido ${body.orderId}`,
-      redirectionUrl: `${SITE}/mi-cuenta?tab=orders&order=${body.orderId}`,
-      // url: opcional — si quieres redirección directa al checkout de Bold:
-      // url: `https://checkout.bold.co/...?...`
-    }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      url,
+      paymentLink: data.payload.payment_link,
+    });
   } catch (e) {
-    return new Response(JSON.stringify({ error: String(e) }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    return json({ error: String(e) }, 500);
   }
 });
+
+function json(data: unknown, status = 200) {
+  return new Response(JSON.stringify(data), {
+    status,
+    headers: { ...CORS, "Content-Type": "application/json" },
+  });
+}
