@@ -350,6 +350,13 @@ export const store = {
       supabase.from("orders").update({ payment_status }).eq("code", code).then(({ error }) => logErr("updatePaymentStatus", error));
     }
   },
+  async deleteOrder(code: string) {
+    write(KEYS.orders, store.getOrders().filter((o) => o.code !== code));
+    if (SUPABASE_READY) {
+      const { error } = await supabase.from("orders").delete().eq("code", code);
+      logErr("deleteOrder", error);
+    }
+  },
   async fetchUserOrders(userId: string): Promise<Order[]> {
     const { data, error } = await supabase
       .from("orders").select("*").eq("user_id", userId)
