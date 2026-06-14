@@ -11,7 +11,6 @@ import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/lib/supabase";
 import { toast } from "sonner";
 import { CreditCard, MessageCircle, Tag, Loader2, MapPin, Calendar, Clock, User, Gift } from "lucide-react";
-import { BoldPaymentDialog } from "@/components/BoldPaymentDialog";
 
 const BOLD_API_KEY = "dMTrm3xHSPLuQmfltK6sVp9IeH__xGJbPgWog0dOETY";
 
@@ -48,7 +47,6 @@ export default function Checkout() {
   const [discount, setDiscount] = useState<{ code: string; percent: number } | null>(null);
 
   const [loading, setLoading] = useState<null | "wa" | "bold">(null);
-  const [boldStartedAt, setBoldStartedAt] = useState<number | null>(null);
 
   // Fecha mínima = mañana
   const minDate = useMemo(() => {
@@ -186,63 +184,39 @@ export default function Checkout() {
       });
 
       if (fnError || !boldData?.integritySignature) {
-        throw new Error(fnError?.message || "No se pudo generar la firma Bold");
+        console.error("Bold edge function error:", fnError, "data:", boldData);
+        throw new Error(fnError?.message || boldData?.error || "No se pudo generar la firma Bold");
       }
 
-      // 2. Guardar pedido en BD con payment_method bold
+      // 2. Guardar pedido en BD con payment_method bold (aún NO vaciar el carrito)
       await store.addOrder({ ...order, payment_method: "bold", payment_status: "pending" });
+
+      // 3. Construir el link de checkout de Bold directamente y redirigir
+      // Doc: https://developers.bold.co/pagos-en-linea/boton-de-pagos
+      const params = new URLSearchParams({
+        "api-key": BOLD_API_KEY,
+        amount: String(boldData.amount),
+        currency: boldData.currency,
+        "order-id": boldData.orderId,
+        description: boldData.description,
+        "integrity-signature": boldData.integritySignature,
+        "redirection-url": boldData.redirectionUrl,
+      });
+
+      const boldUrl = `https://checkout.bold.co/payment?${params.toString()}`;
+
+      // Solo vaciar el carrito cuando ya vamos a salir hacia Bold
       store.clearCart();
-
-      // 3. Montar y disparar el botón Bold dinámicamente
-      // Bold funciona inyectando su script con data-attributes
-      const container = document.getElementById("bold-button-container");
-      if (!container) throw new Error("Contenedor Bold no encontrado");
-
-      container.innerHTML = ""; // limpiar
-
-      const btn = document.createElement("div");
-      btn.setAttribute("data-bold-button", "");
-      btn.setAttribute("data-order-id", boldData.orderId);
-      btn.setAttribute("data-currency", boldData.currency);
-      btn.setAttribute("data-amount", String(boldData.amount));
-      btn.setAttribute("data-api-key", BOLD_API_KEY);
-      btn.setAttribute("data-integrity-signature", boldData.integritySignature);
-      btn.setAttribute("data-description", boldData.description);
-      btn.setAttribute("data-redirection-url", boldData.redirectionUrl);
-      container.appendChild(btn);
-
-      // Cargar/recargar el script de Bold
-      const existing = document.getElementById("bold-script");
-      if (existing) existing.remove();
-
-      const script = document.createElement("script");
-      script.id = "bold-script";
-      script.src = "https://checkout.bold.co/library/boldPaymentButton.js";
-      script.onload = () => {
-        // Bold renderiza automáticamente y abre su checkout
-        // Esperamos un momento y simulamos click si lo tiene
-        setTimeout(() => {
-          const boldBtn = container.querySelector("button, a, [role='button']") as HTMLElement;
-          if (boldBtn) {
-            boldBtn.click();
-          } else {
-            // Bold puede redirigir directamente
-            setLoading(null);
-          }
-        }, 800);
-      };
-      script.onerror = () => {
-        throw new Error("No se pudo cargar el script de Bold");
-      };
-      document.body.appendChild(script);
-      setBoldStartedAt(Date.now());
-      setLoading(null);
+      window.location.href = boldUrl;
 
     } catch (e: any) {
       console.error("Bold error:", e);
       setLoading(null);
       toast.error("No se pudo iniciar el pago con Bold", {
-        description: "Intenta de nuevo o completa el pedido por WhatsApp.",
+        description: e?.message?.includes("Faltan")
+          ? "Falta configuración en el servidor. Contacta al administrador."
+          : "Intenta de nuevo o completa el pedido por WhatsApp.",
+        duration: 6000,
       });
     }
   };
@@ -430,7 +404,7 @@ export default function Checkout() {
 
               <div className="mt-5 space-y-2">
                 <Button onClick={payBold} disabled={loading !== null} className="w-full bg-burgundy hover:bg-burgundy-light text-primary-foreground h-12">
-                  {loading === "bold" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CreditCard className="w-4 h-4 mr-2" /> Pagar en línea con Bold</>}
+                  {loading === "bold" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><CreditCard className="w-4 h-4 mr-2" /> Pagar en línea</>}
                 </Button>
                 <Button onClick={payWhatsApp} disabled={loading !== null} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white h-12">
                   {loading === "wa" ? <Loader2 className="w-4 h-4 animate-spin" /> : <><MessageCircle className="w-4 h-4 mr-2" /> Confirmar por WhatsApp</>}
@@ -443,9 +417,6 @@ export default function Checkout() {
           </aside>
         </div>
       </section>
-      <BoldPaymentDialog startedAt={boldStartedAt} onClose={() => setBoldStartedAt(null)} />
-      {/* Contenedor oculto donde Bold monta su botón dinámicamente */}
-      <div id="bold-button-container" className="hidden" aria-hidden="true" />
     </>
   );
 }
