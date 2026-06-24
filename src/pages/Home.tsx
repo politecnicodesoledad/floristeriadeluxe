@@ -13,7 +13,7 @@ const promises = [
   { icon: Flower, title: "Arreglos Exclusivos", text: "Más de 230 diseños florales únicos disponibles." },
   { icon: Gift, title: "Para Toda Ocasión", text: "Bodas, cumpleaños, fúnebre, desayunos y más." },
   { icon: MessageCircle, title: "Atención por WhatsApp", text: "Te atendemos de inmediato, 24/7." },
-  { icon: Truck, title: "Envíos Gratis", text: "Cobertura en Barranquilla y Soledad." },
+  { icon: Truck, title: "Domicilios", text: "Cubrimos todo el Atlántico." },
 ];
 
 export default function Home() {
@@ -41,7 +41,7 @@ export default function Home() {
     <>
       <Helmet>
         <title>Floristería Deluxe — Flores perfectas para momentos inolvidables</title>
-        <meta name="description" content="Arreglos florales exclusivos en Barranquilla y Soledad. Bodas, cumpleaños, fúnebre y desayunos sorpresa. Envíos gratis." />
+        <meta name="description" content="Arreglos florales exclusivos en Barranquilla y todo el Atlántico. Bodas, cumpleaños, fúnebre y desayunos sorpresa." />
       </Helmet>
 
       {/* HERO */}
@@ -76,7 +76,7 @@ export default function Home() {
             </div>
             <div className="mt-8 flex items-center gap-6 text-xs text-muted-foreground">
               <div className="flex items-center gap-1.5"><Award className="w-4 h-4 text-gold" /> Desde 2010</div>
-              <div className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-gold" /> Envío gratis</div>
+              <div className="flex items-center gap-1.5"><Truck className="w-4 h-4 text-gold" /> Todo el Atlántico</div>
               <div className="flex items-center gap-1.5"><Flower className="w-4 h-4 text-gold" /> 230+ diseños</div>
             </div>
           </Reveal>
