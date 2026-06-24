@@ -7,7 +7,6 @@ import { Footer } from "@/components/layout/Footer";
 import { WhatsAppFAB } from "@/components/layout/WhatsAppFAB";
 import { CartDrawer } from "@/components/CartDrawer";
 import { PromoPopup } from "@/components/PromoPopup";
-import { PuntosDeluxeToast } from "@/components/PuntosDeluxeToast";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import { hydrateAll } from "@/lib/store";
@@ -66,7 +65,6 @@ export default function App() {
         <WhatsAppFAB />
         <CartDrawer open={cartOpen} onOpenChange={setCartOpen} />
         <PromoPopup />
-        <PuntosDeluxeToast />
         <Toaster position="top-center" richColors />
       </div>
     </AuthProvider>
