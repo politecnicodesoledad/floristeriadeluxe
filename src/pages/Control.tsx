@@ -11,7 +11,7 @@ import { supabase } from "@/lib/supabase";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBanner, useProducts, useSiteImages } from "@/lib/hooks";
 import { isLegacyBrokenImageUrl, resolveAssetUrl } from "@/lib/utils";
-import { LogOut, Pencil, Plus, Save, Trash2, Image as ImageIcon, Images as ImagesIcon, Tag, Package, Users, Settings, Ticket, Truck } from "lucide-react";
+import { LogOut, Pencil, Plus, Save, Search, Trash2, Image as ImageIcon, Images as ImagesIcon, Tag, Package, Users, Settings, Ticket, Truck } from "lucide-react";
 import { toast } from "sonner";
 
 const CATS = ["Cumpleaños", "Bodas", "Fúnebre", "Desayunos"];
@@ -121,6 +121,14 @@ function ProductsTab() {
     }
   };
 
+  const [search, setSearch] = useState("");
+
+  const filteredProducts = products.filter((p) =>
+    !search.trim() ||
+    p.title.toLowerCase().includes(search.toLowerCase()) ||
+    p.category.toLowerCase().includes(search.toLowerCase())
+  );
+
   const startNew = () => { setEditing(emptyProduct()); setStep(1); };
   const startEdit = (p: Product) => { setEditing({ ...p }); setStep(1); };
 
@@ -145,7 +153,7 @@ function ProductsTab() {
     <div className="grid lg:grid-cols-[1fr_420px] gap-6">
       {/* Lista */}
       <div className="bg-card border border-border/60 rounded-3xl p-5 md:p-6 shadow-soft">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
           <h2 className="font-serif text-burgundy text-xl italic">Catálogo ({products.length})</h2>
           <div className="flex gap-2 flex-wrap">
             <Button onClick={() => runMigration(true)} disabled={migrating} variant="outline" className="border-rose-deep text-rose-deep">
@@ -158,6 +166,15 @@ function ProductsTab() {
               <Plus className="w-4 h-4 mr-1" /> Nuevo producto
             </Button>
           </div>
+        </div>
+        <div className="relative mb-3">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar producto o categoría..."
+            className="w-full pl-9 pr-4 py-2 rounded-xl border border-border/60 text-sm focus:outline-none focus:ring-2 focus:ring-burgundy/20"
+          />
         </div>
         {migrateReport && (
           <div className="mb-4 p-3 rounded-xl bg-rose-soft/60 border border-rose-mid/30 text-xs text-burgundy">
@@ -177,7 +194,7 @@ function ProductsTab() {
           </div>
         )}
         <div className="grid sm:grid-cols-2 gap-2 max-h-[700px] overflow-y-auto pr-1">
-          {products.map((p) => (
+          {filteredProducts.map((p) => (
             <div key={p.id} className="flex items-center gap-3 bg-rose-soft/60 rounded-xl p-2.5">
               <img src={resolveAssetUrl(p.image)} alt="" className="w-14 h-14 object-cover rounded-lg shrink-0" />
               <div className="flex-1 min-w-0">
@@ -289,7 +306,16 @@ function ProductsTab() {
 function OrdersTab() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
   useEffect(() => { (async () => { setOrders(await store.fetchAllOrders()); setLoading(false); })(); }, []);
+
+  const filteredOrders = orders.filter((o) =>
+    !search.trim() ||
+    o.code.toLowerCase().includes(search.toLowerCase()) ||
+    o.customer?.name?.toLowerCase().includes(search.toLowerCase()) ||
+    o.customer?.phone?.includes(search) ||
+    o.recipient_name?.toLowerCase().includes(search.toLowerCase())
+  );
 
   const change = async (code: string, status: Order["status"]) => {
     await store.updateOrderStatus(code, status);
@@ -315,9 +341,18 @@ function OrdersTab() {
 
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-5 md:p-6 shadow-soft">
-      <h2 className="font-serif text-burgundy text-xl italic mb-4">Pedidos ({orders.length})</h2>
+      <h2 className="font-serif text-burgundy text-xl italic mb-3">Pedidos ({orders.length})</h2>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por código, cliente, teléfono o destinatario..."
+          className="w-full pl-9 pr-4 py-2 rounded-xl border border-border/60 text-sm focus:outline-none focus:ring-2 focus:ring-burgundy/20"
+        />
+      </div>
       <ul className="divide-y divide-border/60">
-        {orders.map((o) => (
+        {filteredOrders.map((o) => (
           <li key={o.code} className="py-4 space-y-2">
             <div className="grid md:grid-cols-[1fr_auto] gap-3 md:items-start">
               <div>
@@ -623,16 +658,33 @@ function BannersTab() {
 /* ============ CLIENTES ============ */
 function ClientsTab() {
   const [list, setList] = useState<{ id: string; full_name: string | null; phone: string | null; created_at: string }[]>([]);
+  const [search, setSearch] = useState("");
   useEffect(() => {
     supabase.from("profiles").select("id, full_name, phone, created_at").order("created_at", { ascending: false }).limit(200)
       .then(({ data }) => setList(data ?? []));
   }, []);
+
+  const filtered = list.filter((c) =>
+    !search.trim() ||
+    c.full_name?.toLowerCase().includes(search.toLowerCase()) ||
+    c.phone?.includes(search)
+  );
+
   return (
     <div className="bg-card border border-border/60 rounded-3xl p-5 md:p-6 shadow-soft">
-      <h2 className="font-serif text-burgundy text-xl italic mb-4">Clientes registrados ({list.length})</h2>
-      {list.length === 0 ? <p className="text-sm text-muted-foreground italic">Aún sin registros.</p> : (
+      <h2 className="font-serif text-burgundy text-xl italic mb-3">Clientes registrados ({list.length})</h2>
+      <div className="relative mb-4">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground pointer-events-none" />
+        <input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder="Buscar por nombre o teléfono..."
+          className="w-full pl-9 pr-4 py-2 rounded-xl border border-border/60 text-sm focus:outline-none focus:ring-2 focus:ring-burgundy/20"
+        />
+      </div>
+      {filtered.length === 0 ? <p className="text-sm text-muted-foreground italic">Sin resultados.</p> : (
         <ul className="divide-y divide-border/60">
-          {list.map((c) => (
+          {filtered.map((c) => (
             <li key={c.id} className="py-2.5 flex items-center justify-between text-sm">
               <div>
                 <p className="font-serif text-burgundy">{c.full_name || "Sin nombre"}</p>
